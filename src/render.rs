@@ -3,6 +3,7 @@ use indicatif::{ProgressBar, ProgressStyle};
 use std::time::SystemTime;
 use std::{thread, sync::{Arc, Mutex}};
 use num_cpus;
+use math::round::half_up;
 #[path = "camera.rs"] mod camera;
 pub use camera::*;
 
@@ -16,7 +17,7 @@ pub fn ray_color(r: Ray, scene: &SceneColliders, depth: usize) -> Rgb {
     let hit = scene.intersect(r, 0.001, f32::MAX);
     match hit {
         Some((mut rec, mat_idx)) => {
-            let mut scattered = Ray::new(Vec3::origin(), Vec3::origin());
+            let mut scattered = Ray::new(Vec3::origin(), Vec3::origin(), 0.0);
             let mut attenuation = Vec3::origin();
             if scene.materials[mat_idx].scatter(r, &mut attenuation, &mut rec, &mut scattered) {
                 return attenuation * ray_color(scattered, scene, depth - 1);
@@ -156,7 +157,8 @@ pub fn render_multi(scene: SceneColliders, cam: Camera, max_depth: usize, sample
         *pixel = image::Rgb([pix.0[0] as u8, pix.0[1] as u8, pix.0[2] as u8]);
     }
 
-    println!("\nRendered in {}s", SystemTime::now().duration_since(time_start).unwrap().as_secs());
+    let render_time = SystemTime::now().duration_since(time_start).unwrap().as_secs();
+    println!("\nRendered in {}s ({}m)", render_time, half_up(render_time as f64, 1));
 
     return finalbuf;
 }

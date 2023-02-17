@@ -50,7 +50,7 @@ impl Material for Lambertian {
             scatter_dir = rec.normal;
         }
 
-        scattered.reset(rec.point, scatter_dir);
+        scattered.reset(rec.point, scatter_dir, r_in.time);
         attenuation.set_to(self.albedo);
         return true;
     }
@@ -74,7 +74,7 @@ impl Glossy {
 impl Material for Glossy {
     fn scatter(&self, r_in: Ray, attenuation: &mut Rgb, rec: &mut HitRecord, scattered: &mut Ray) -> bool {
         let reflected = reflect(r_in.direction.normalize(), rec.normal);
-        scattered.reset(rec.point, reflected + random_in_unit_sphere() * self.fuzz);
+        scattered.reset(rec.point, reflected + random_in_unit_sphere() * self.fuzz, r_in.time);
         attenuation.set_to(self.albedo);
         return scattered.direction.dot(rec.normal) > 0.0;
     }
@@ -118,7 +118,7 @@ impl Material for Dielectric {
             dir = refract(unit_dir, rec.normal, refraction_ratio);
         }
 
-        scattered.reset(rec.point, dir);
+        scattered.reset(rec.point, dir, r_in.time);
         return true;
     }
 }

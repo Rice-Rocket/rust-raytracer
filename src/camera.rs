@@ -13,6 +13,9 @@ pub struct Camera {
     pub focus_dist: f32,
     pub lens_radius: f32,
 
+    pub shutter_open: f32,
+    pub shutter_close: f32,
+
     pub u: Vec3,
     pub v: Vec3,
     pub w: Vec3,
@@ -28,7 +31,7 @@ pub struct Camera {
 }
 
 impl Camera {
-    pub fn new(look_from: Point3, look_at: Point3, vup: Vec3, vfov: f32, aperture: f32, focus_dist: f32, aspect_ratio: f32) -> Self {
+    pub fn new(look_from: Point3, look_at: Point3, vup: Vec3, vfov: f32, aperture: f32, focus_dist: f32, aspect_ratio: f32, shutter_open: f32, shutter_close: f32) -> Self {
         let theta = to_radians(vfov);
         let h = (theta / 2.0).tan();
         let viewport_height = 2.0 * h;
@@ -57,6 +60,9 @@ impl Camera {
             viewport_width: viewport_width,
             focal_length: focal_length,
 
+            shutter_close: shutter_close,
+            shutter_open: shutter_open,
+
             u: u,
             v: v,
             w: w,
@@ -70,6 +76,10 @@ impl Camera {
     pub fn get_ray(&self, u: f32, v: f32) -> Ray {
         let rd = random_in_unit_disk() * self.lens_radius;
         let offset = self.u * rd.x + self.v * rd.y;
-        Ray::new(self.origin + offset, self.lower_left + self.horizontal * u + self.vertical * v - self.origin - offset)
+        Ray::new(
+            self.origin + offset, 
+            self.lower_left + self.horizontal * u + self.vertical * v - self.origin - offset,
+            randrange(self.shutter_open, self.shutter_close)
+        )
     }
 }
