@@ -1,7 +1,7 @@
 #[path = "collider.rs"] mod collider;
 pub use collider::*;
 
-
+#[derive(Clone)]
 pub struct Camera {
     pub look_from: Point3,
     pub look_at: Point3,

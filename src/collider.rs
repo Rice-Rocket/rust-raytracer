@@ -46,11 +46,9 @@ impl Sphere {
     }
 }
 
-
-
 pub struct SceneColliders {
-    pub objects: Vec<Box<dyn Geometry>>,
-    pub materials: Vec<Box<dyn Material>>
+    pub objects: Vec<Box<dyn Geometry + Sync + Send>>,
+    pub materials: Vec<Box<dyn Material + Sync + Send>>
 }
 
 impl SceneColliders {
@@ -60,7 +58,7 @@ impl SceneColliders {
             materials: Vec::new()
         }
     }
-    pub fn add(&mut self, object: Box<dyn Geometry>, material: Box<dyn Material>) {
+    pub fn add(&mut self, object: Box<dyn Geometry + Sync + Send>, material: Box<dyn Material + Sync + Send>) {
         self.objects.push(object);
         self.materials.push(material);
     }

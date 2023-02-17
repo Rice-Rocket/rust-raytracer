@@ -23,7 +23,7 @@ fn default_scene() -> (Camera, SceneColliders, f32, u32, u32, usize, usize) {
         look_at,
         Vec3::new(0.0, 1.0, 0.0),
         30.0, 
-        2.0,
+        0.1,
         (look_from - look_at).length(),
         aspect_ratio
     );
@@ -110,14 +110,14 @@ fn random_spheres() -> (Camera, SceneColliders, f32, u32, u32, usize, usize) {
 
 
 fn main() {
-    let (cam, scene, aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = random_spheres();
-    let mut imgbuf: ImageBuffer<image::Rgb<u8>, Vec<_>> = ImageBuffer::new(img_width, img_height);
-    render(
-        &mut imgbuf,
-        &scene,
-        &cam,
+    let (cam, scene, aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = default_scene();
+    let imgbuf = render_multi(
+        scene,
+        cam,
         max_depth,
-        samples_per_pixel
+        samples_per_pixel,
+        img_width, 
+        img_height
     );
 
     imgbuf.save(&format!("output/{}", FILENAME)).unwrap();
