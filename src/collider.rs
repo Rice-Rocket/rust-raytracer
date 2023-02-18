@@ -37,9 +37,10 @@ impl Geometry for Sphere {
         let out_normal = (point - self.center) / self.radius;
         rec.set_face_normal(r, out_normal);
         rec.material = self.material.clone();
+        rec.set_uv(self.get_uv(out_normal));
         return Some(rec);
     }
-    fn bounding_box(&self, time_0: f32, time_1: f32) -> Option<AABB> {
+    fn bounding_box(&self, _time_0: f32, _time_1: f32) -> Option<AABB> {
         return Some(AABB::new(
             self.center - Vec3::new(self.radius, self.radius, self.radius),
             self.center + Vec3::new(self.radius, self.radius, self.radius)
@@ -54,6 +55,11 @@ impl Sphere {
             radius: radius,
             material: material
         }
+    }
+    pub fn get_uv(&self, point: Point3) -> (f32, f32) {
+        let theta = (-point.y).acos();
+        let phi = (-point.z).atan2(point.x) + PI;
+        (phi / TAU, theta / PI)
     }
 }
 
@@ -117,6 +123,138 @@ impl MovingSphere {
     }
     pub fn center(&self, time: f32) -> Point3 {
         self.center_0 + (self.center_1 - self.center_0) * ((time - self.time_0) / (self.time_1 - self.time_0))
+    }
+}
+
+
+pub struct XYRect {
+    pub x0: f32,
+    pub x1: f32,
+    pub y0: f32,
+    pub y1: f32,
+    pub k: f32,
+    pub material: Arc<dyn Material + Send + Sync>
+}
+
+impl XYRect {
+    pub fn new(x0: f32, x1: f32, y0: f32, y1: f32, k: f32, material: Arc<dyn Material + Send + Sync>) -> Self {
+        Self {
+            x0, x1, y0, y1, k, 
+            material: material
+        }
+    }
+}
+
+impl Geometry for XYRect {
+    fn intersect(&self, r: Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+        let t = (self.k - r.origin.z) / r.direction.z;
+        if (t < t_min) || (t > t_max) {
+            return None;
+        }
+        let x = r.origin.x + t * r.direction.x;
+        let y = r.origin.y + t * r.direction.y;
+        if (x < self.x0) || (x > self.x1) || (y < self.y0) || (y > self.y1) {
+            return None;
+        }
+        let mut rec = HitRecord::new(r.at(t), t);
+        rec.set_uv(((x - self.x0) / (self.x1 - self.x0), (y - self.y0) / (self.y1 - self.y0)));
+        rec.set_face_normal(r, Vec3::new(0.0, 0.0, 1.0));
+        rec.material = self.material.clone();
+        return Some(rec);
+    }
+    fn bounding_box(&self, _time_0: f32, _time_1: f32) -> Option<AABB> {
+        Some(AABB::new(
+            Point3::new(self.x0, self.y0, self.k - 0.0001),
+            Point3::new(self.x1, self.y1, self.k + 0.0001)
+        ))
+    }
+}
+
+
+pub struct XZRect {
+    pub x0: f32,
+    pub x1: f32,
+    pub z0: f32,
+    pub z1: f32,
+    pub k: f32,
+    pub material: Arc<dyn Material + Send + Sync>
+}
+
+impl XZRect {
+    pub fn new(x0: f32, x1: f32, z0: f32, z1: f32, k: f32, material: Arc<dyn Material + Send + Sync>) -> Self {
+        Self {
+            x0, x1, z0, z1, k, 
+            material: material
+        }
+    }
+}
+
+impl Geometry for XZRect {
+    fn intersect(&self, r: Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+        let t = (self.k - r.origin.y) / r.direction.y;
+        if (t < t_min) || (t > t_max) {
+            return None;
+        }
+        let x = r.origin.x + t * r.direction.x;
+        let z = r.origin.z + t * r.direction.z;
+        if (x < self.x0) || (x > self.x1) || (z < self.z0) || (z > self.z1) {
+            return None;
+        }
+        let mut rec = HitRecord::new(r.at(t), t);
+        rec.set_uv(((x - self.x0) / (self.x1 - self.x0), (z - self.z0) / (self.z1 - self.z0)));
+        rec.set_face_normal(r, Vec3::new(0.0, 1.0, 0.0));
+        rec.material = self.material.clone();
+        return Some(rec);
+    }
+    fn bounding_box(&self, _time_0: f32, _time_1: f32) -> Option<AABB> {
+        Some(AABB::new(
+            Point3::new(self.x0, self.k - 0.0001, self.z0),
+            Point3::new(self.x1, self.k + 0.0001, self.z1)
+        ))
+    }
+}
+
+
+pub struct YZRect {
+    pub z0: f32,
+    pub z1: f32,
+    pub y0: f32,
+    pub y1: f32,
+    pub k: f32,
+    pub material: Arc<dyn Material + Send + Sync>
+}
+
+impl YZRect {
+    pub fn new(y0: f32, y1: f32, z0: f32, z1: f32, k: f32, material: Arc<dyn Material + Send + Sync>) -> Self {
+        Self {
+            z0, z1, y0, y1, k, 
+            material: material
+        }
+    }
+}
+
+impl Geometry for YZRect {
+    fn intersect(&self, r: Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+        let t = (self.k - r.origin.x) / r.direction.x;
+        if (t < t_min) || (t > t_max) {
+            return None;
+        }
+        let y = r.origin.y + t * r.direction.y;
+        let z = r.origin.z + t * r.direction.z;
+        if (y < self.y0) || (y > self.y1) || (z < self.z0) || (z > self.z1) {
+            return None;
+        }
+        let mut rec = HitRecord::new(r.at(t), t);
+        rec.set_uv(((y - self.y0) / (self.y1 - self.y0), (z - self.z0) / (self.z1 - self.z0)));
+        rec.set_face_normal(r, Vec3::new(1.0, 0.0, 0.0));
+        rec.material = self.material.clone();
+        return Some(rec);
+    }
+    fn bounding_box(&self, _time_0: f32, _time_1: f32) -> Option<AABB> {
+        Some(AABB::new(
+            Point3::new(self.k - 0.0001, self.y0, self.z0),
+            Point3::new(self.k + 0.0001, self.y1, self.z1)
+        ))
     }
 }
 

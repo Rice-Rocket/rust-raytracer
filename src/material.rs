@@ -1,7 +1,7 @@
-#[path = "ray.rs"] mod ray;
+#[path = "texture.rs"] mod texture;
+pub use texture::*;
 use std::sync::Arc;
 
-pub use ray::*;
 
 
 #[derive(Clone)]
@@ -10,6 +10,8 @@ pub struct HitRecord {
     pub normal: Vec3,
     pub material: Arc<dyn Material + Send + Sync>,
     pub t: f32,
+    pub u: f32,
+    pub v: f32,
     pub front_face: bool
 }
 
@@ -18,8 +20,10 @@ impl HitRecord {
         Self {
             point: point,
             normal: Vec3::new(0.0, 0.0, 0.0),
-            material: Arc::new(Lambertian::new(Rgb::origin())),
+            material: Arc::new(Lambertian::new(Arc::new(SolidColor::new(Rgb::origin())))),
             t: t,
+            u: 0.0,
+            v: 0.0,
             front_face: false
         }
     }
@@ -27,18 +31,25 @@ impl HitRecord {
         self.front_face = r.direction.dot(out_normal) < 0.0;
         self.normal = if self.front_face { out_normal } else { -out_normal };
     }
+    pub fn set_uv(&mut self, uv: (f32, f32)) {
+        self.u = uv.0;
+        self.v = uv.1;
+    }
 }
 
 pub trait Material {
     fn scatter(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray) -> bool;
+    fn emitted(&self, _u: f32, _v: f32, _point: Point3) -> Rgb {
+        Rgb::origin()
+    }
 }
 
 pub struct Lambertian {
-    pub albedo: Rgb
+    pub albedo: Arc<dyn Texture + Send + Sync>
 }
 
 impl Lambertian {
-    pub fn new(albedo: Rgb) -> Self {
+    pub fn new(albedo: Arc<dyn Texture + Send + Sync>) -> Self {
         Self {
             albedo: albedo
         }
@@ -54,7 +65,7 @@ impl Material for Lambertian {
         }
 
         scattered.reset(rec.point, scatter_dir, r_in.time);
-        attenuation.set_to(self.albedo);
+        attenuation.set_to(self.albedo.get_color(rec.u, rec.v, rec.point));
         return true;
     }
 }
@@ -82,7 +93,6 @@ impl Material for Glossy {
         return scattered.direction.dot(rec.normal) > 0.0;
     }
 }
-
 
 
 pub struct Dielectric {
@@ -123,5 +133,27 @@ impl Material for Dielectric {
 
         scattered.reset(rec.point, dir, r_in.time);
         return true;
+    }
+}
+
+
+pub struct Emissive {
+    pub color: Arc<SolidColor>
+}
+
+impl Emissive {
+    pub fn new(color: Rgb) -> Self {
+        Self {
+            color: Arc::new(SolidColor::new(color))
+        }
+    }
+}
+
+impl Material for Emissive {
+    fn scatter(&self, _r_in: Ray, _attenuation: &mut Rgb, _rec: HitRecord, _scattered: &mut Ray) -> bool {
+        return false;
+    }
+    fn emitted(&self, u: f32, v: f32, point: Point3) -> Rgb {
+        self.color.get_color(u, v, point)
     }
 }
