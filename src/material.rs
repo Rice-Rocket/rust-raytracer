@@ -1,11 +1,14 @@
 #[path = "ray.rs"] mod ray;
+use std::sync::Arc;
+
 pub use ray::*;
 
 
+#[derive(Clone)]
 pub struct HitRecord {
     pub point: Point3,
     pub normal: Vec3,
-    pub material: Box<dyn Material>,
+    pub material: Arc<dyn Material + Send + Sync>,
     pub t: f32,
     pub front_face: bool
 }
@@ -15,7 +18,7 @@ impl HitRecord {
         Self {
             point: point,
             normal: Vec3::new(0.0, 0.0, 0.0),
-            material: Box::new(Lambertian::new(Rgb::origin())),
+            material: Arc::new(Lambertian::new(Rgb::origin())),
             t: t,
             front_face: false
         }
@@ -27,7 +30,7 @@ impl HitRecord {
 }
 
 pub trait Material {
-    fn scatter(&self, r_in: Ray, attenuation: &mut Rgb, rec: &mut HitRecord, scattered: &mut Ray) -> bool;
+    fn scatter(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray) -> bool;
 }
 
 pub struct Lambertian {
@@ -43,7 +46,7 @@ impl Lambertian {
 }
 
 impl Material for Lambertian {
-    fn scatter(&self, r_in: Ray, attenuation: &mut Rgb, rec: &mut HitRecord, scattered: &mut Ray) -> bool {
+    fn scatter(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray) -> bool {
         let mut scatter_dir = rec.normal + random_unit_vec3();
 
         if scatter_dir.near_zero() {
@@ -72,7 +75,7 @@ impl Glossy {
 }
 
 impl Material for Glossy {
-    fn scatter(&self, r_in: Ray, attenuation: &mut Rgb, rec: &mut HitRecord, scattered: &mut Ray) -> bool {
+    fn scatter(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray) -> bool {
         let reflected = reflect(r_in.direction.normalize(), rec.normal);
         scattered.reset(rec.point, reflected + random_in_unit_sphere() * self.fuzz, r_in.time);
         attenuation.set_to(self.albedo);
@@ -100,7 +103,7 @@ impl Dielectric {
 }
 
 impl Material for Dielectric {
-    fn scatter(&self, r_in: Ray, attenuation: &mut Rgb, rec: &mut HitRecord, scattered: &mut Ray) -> bool {
+    fn scatter(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray) -> bool {
         attenuation.set_to(Vec3::new(1.0, 1.0, 1.0));
         let refraction_ratio = if rec.front_face { 1.0 / self.refraction_index } else { self.refraction_index };
 

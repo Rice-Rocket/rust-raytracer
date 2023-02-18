@@ -1,4 +1,4 @@
-use std::ops::{Add, Sub, Mul, Div, Neg};
+use std::ops::{Add, Sub, Mul, Div, Neg, Index};
 #[path = "utils.rs"] mod utils;
 pub use utils::*;
 
@@ -81,6 +81,18 @@ impl Neg for Vec3 {
     type Output = Self;
     fn neg(self) -> Self::Output {
         self * -1.0
+    }
+}
+
+impl Index<usize> for Vec3 {
+    type Output = f32;
+    fn index(&self, index: usize) -> &Self::Output {
+        match index {
+            0 => &self.x,
+            1 => &self.y,
+            2 => &self.z,
+            _ => panic!("Cannot index into Vec3 with {}", index)
+        }
     }
 }
 

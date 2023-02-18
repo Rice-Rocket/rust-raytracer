@@ -1,5 +1,5 @@
-#[path = "collider.rs"] mod collider;
-pub use collider::*;
+#[path = "bvh.rs"] mod bvh;
+pub use bvh::*;
 
 #[derive(Clone)]
 pub struct Camera {
