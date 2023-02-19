@@ -1,9 +1,9 @@
-#[path = "ray.rs"] mod ray;
+#[path = "perlin.rs"] mod perlin;
+pub use perlin::*;
 
 use std::{fs::File, path::Path, io::BufReader};
 
 use image::{self, GenericImageView, DynamicImage};
-pub use ray::*;
 
 
 pub trait Texture {
@@ -53,6 +53,32 @@ impl Texture for Checkered {
             self.even_color
         }
     }
+}
+
+
+pub struct NoiseTexture {
+    noise: Perlin,
+    pub scale: f32,
+    pub turb: usize
+}
+
+impl NoiseTexture {
+    pub fn new(scale: f32, turb: usize) -> Self {
+        Self {
+            noise: Perlin::new(),
+            scale: scale,
+            turb: turb
+        }
+    }
+}
+
+impl Texture for NoiseTexture {
+    fn get_color(&self, _u: f32, _v: f32, point: Point3) -> Rgb {
+        Rgb::new(1.0, 1.0, 1.0) * 0.5 * (1.0 + (self.scale * point.z + 10.0 * self.noise.turb(point, self.turb)).sin())
+    }
+    // fn get_color(&self, _u: f32, _v: f32, point: Point3) -> Rgb {
+    //     Rgb::new(1.0, 1.0, 1.0) * self.noise.turb(point * self.scale, self.turb)
+    // }
 }
 
 
