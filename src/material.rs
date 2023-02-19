@@ -137,6 +137,28 @@ impl Material for Dielectric {
 }
 
 
+pub struct Isotropic {
+    pub albedo: Arc<SolidColor>
+}
+
+impl Isotropic {
+    pub fn new(color: Rgb) -> Self {
+        Self {
+            albedo: Arc::new(SolidColor::new(color))
+        }
+    }
+}
+
+impl Material for Isotropic {
+    fn scatter(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray) -> bool {
+        scattered.reset(rec.point, random_in_unit_sphere(), r_in.time);
+        attenuation.set_to(self.albedo.get_color(rec.u, rec.v, rec.point));
+        return true;
+    }
+}
+
+
+
 pub struct Emissive {
     pub color: Arc<SolidColor>
 }

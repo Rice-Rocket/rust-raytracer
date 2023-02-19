@@ -293,10 +293,10 @@ fn rect_light() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
 fn cornell_box() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     // Image
     let aspect_ratio = 1.0;
-    let image_width = 600;
+    let image_width = 800;
     let image_height = (image_width as f32 / aspect_ratio) as u32;
-    let samples_per_pixel = 200;
-    let max_depth = 100;
+    let samples_per_pixel = 500;
+    let max_depth = 200;
     let background = Rgb::new(0.0, 0.0, 0.0);
 
     // Camera
@@ -335,9 +335,54 @@ fn cornell_box() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
 
+fn cornell_smoke() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
+    // Image
+    let aspect_ratio = 1.0;
+    let image_width = 800;
+    let image_height = (image_width as f32 / aspect_ratio) as u32;
+    let samples_per_pixel = 500;
+    let max_depth = 200;
+    let background = Rgb::new(0.0, 0.0, 0.0);
+
+    // Camera
+    let look_from = Point3::new(278.0, 278.0, -800.0);
+    let look_at = Point3::new(278.0, 278.0, 0.0);
+
+    let cam = Camera::new(
+        look_from, 
+        look_at,
+        Vec3::new(0.0, 1.0, 0.0),
+        40.0, 
+        0.0,
+        10.0,
+        aspect_ratio,
+        0.0, 1.0
+    );
+
+    // Scene
+    let mut scene = SceneColliders::new();
+
+    let red = Arc::new(Lambertian::new(Arc::new(SolidColor::new(Rgb::new(0.65, 0.05, 0.05)))));
+    let white = Arc::new(Lambertian::new(Arc::new(SolidColor::new(Rgb::new(0.73, 0.73, 0.73)))));
+    let green = Arc::new(Lambertian::new(Arc::new(SolidColor::new(Rgb::new(0.12, 0.45, 0.15)))));
+    let light = Arc::new(Emissive::new(Rgb::new(15.0, 15.0, 15.0)));
+
+    scene.add(Arc::new(YZRect::new(0.0, 555.0, 0.0, 555.0, 555.0, green)));
+    scene.add(Arc::new(YZRect::new(0.0, 555.0, 0.0, 555.0, 0.0, red)));
+    scene.add(Arc::new(XZRect::new(213.0, 343.0, 227.0, 332.0, 554.0, light)));
+    scene.add(Arc::new(XZRect::new(0.0, 555.0, 0.0, 555.0, 0.0, white.clone())));
+    scene.add(Arc::new(XZRect::new(0.0, 555.0, 0.0, 555.0, 555.0, white.clone())));
+    scene.add(Arc::new(XYRect::new(0.0, 555.0, 0.0, 555.0, 555.0, white.clone())));
+
+    scene.add(Arc::new(ConstantMedium::new(Arc::new(TranslateInstance::new(Arc::new(YRotationInstance::new(Arc::new(Cuboid::new(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 330.0, 165.0), white.clone())), 15.0)), Vec3::new(265.0, 0.0, 295.0))), 0.01, Rgb::new(0.0, 0.0, 0.0))));
+    scene.add(Arc::new(ConstantMedium::new(Arc::new(TranslateInstance::new(Arc::new(YRotationInstance::new(Arc::new(Cuboid::new(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 165.0, 165.0), white.clone())), -18.0)), Vec3::new(130.0, 0.0, 65.0))), 0.01, Rgb::new(1.0, 1.0, 1.0))));
+
+    return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
+}
+
 
 fn main() {
-    let (cam, scene, background, aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = cornell_box();
+    let (cam, scene, background, aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = cornell_smoke();
     let imgbuf = render_multi(
         scene,
         cam,

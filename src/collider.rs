@@ -297,6 +297,69 @@ impl Geometry for Cuboid {
 }
 
 
+pub struct ConstantMedium {
+    pub boundary: Arc<dyn Geometry + Send + Sync>,
+    pub neg_inv_density: f32,
+    pub phase_function: Arc<Isotropic>
+}
+
+impl ConstantMedium {
+    pub fn new(boundary: Arc<dyn Geometry + Send + Sync>, density: f32, color: Rgb) -> Self {
+        Self {
+            boundary: boundary,
+            neg_inv_density: -1.0 / density,
+            phase_function: Arc::new(Isotropic::new(color))
+        }
+    }
+}
+
+impl Geometry for ConstantMedium {
+    fn bounding_box(&self, time_0: f32, time_1: f32) -> Option<AABB> {
+        self.boundary.bounding_box(time_0, time_1)
+    }
+    fn intersect(&self, r: Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+        let mut rec1;
+        match self.boundary.intersect(r, f32::MIN, f32::MAX) {
+            Some(rec) => rec1 = rec,
+            None => return None
+        };
+        
+        let mut rec2;
+        match self.boundary.intersect(r, rec1.t + 0.0001, f32::MAX) {
+            Some(rec) => rec2 = rec,
+            None => return None
+        };
+
+        if rec1.t < t_min {
+            rec1.t = t_min;
+        }
+        if rec2.t > t_max {
+            rec2.t = t_max;
+        }
+        if rec1.t >= rec2.t {
+            return None;
+        }
+        if rec1.t < 0.0 {
+            rec1.t = 0.0;
+        }
+
+        let ray_length = r.direction.length();
+        let dist_inside_bound = (rec2.t - rec1.t) * ray_length;
+        let hit_dist = self.neg_inv_density * random().log10();
+
+        if hit_dist > dist_inside_bound {
+            return None;
+        }
+
+        let rec_t = rec1.t + hit_dist / ray_length;
+        let mut rec = HitRecord::new(r.at(rec_t), rec_t);
+        rec.normal = Vec3::new(1.0, 0.0, 0.0);
+        rec.front_face = true;
+        rec.material = self.phase_function.clone();
+        return Some(rec);
+    }
+}
+
 
 pub struct SceneColliders {
     pub objects: Vec<Arc<dyn Geometry + Sync + Send>>,
