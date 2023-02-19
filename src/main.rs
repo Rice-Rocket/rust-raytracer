@@ -296,7 +296,7 @@ fn cornell_box() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     let image_width = 600;
     let image_height = (image_width as f32 / aspect_ratio) as u32;
     let samples_per_pixel = 200;
-    let max_depth = 50;
+    let max_depth = 100;
     let background = Rgb::new(0.0, 0.0, 0.0);
 
     // Camera
@@ -320,7 +320,7 @@ fn cornell_box() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     let red = Arc::new(Lambertian::new(Arc::new(SolidColor::new(Rgb::new(0.65, 0.05, 0.05)))));
     let white = Arc::new(Lambertian::new(Arc::new(SolidColor::new(Rgb::new(0.73, 0.73, 0.73)))));
     let green = Arc::new(Lambertian::new(Arc::new(SolidColor::new(Rgb::new(0.12, 0.45, 0.15)))));
-    let light = Arc::new(Emissive::new(Rgb::new(15.0, 15.0, 15.0)));
+    let light = Arc::new(Emissive::new(Rgb::new(30.0, 30.0, 30.0)));
 
     scene.add(Arc::new(YZRect::new(0.0, 555.0, 0.0, 555.0, 555.0, green)));
     scene.add(Arc::new(YZRect::new(0.0, 555.0, 0.0, 555.0, 0.0, red)));
@@ -329,12 +329,15 @@ fn cornell_box() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     scene.add(Arc::new(XZRect::new(0.0, 555.0, 0.0, 555.0, 555.0, white.clone())));
     scene.add(Arc::new(XYRect::new(0.0, 555.0, 0.0, 555.0, 555.0, white.clone())));
 
+    scene.add(Arc::new(TranslateInstance::new(Arc::new(YRotationInstance::new(Arc::new(Cuboid::new(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 330.0, 165.0), white.clone())), 15.0)), Vec3::new(265.0, 0.0, 295.0))));
+    scene.add(Arc::new(TranslateInstance::new(Arc::new(YRotationInstance::new(Arc::new(Cuboid::new(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 165.0, 165.0), white.clone())), -18.0)), Vec3::new(130.0, 0.0, 65.0))));
+
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
 
 
 fn main() {
-    let (cam, scene, background, aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = random_spheres();
+    let (cam, scene, background, aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = cornell_box();
     let imgbuf = render_multi(
         scene,
         cam,

@@ -1,7 +1,7 @@
-#[path = "collider.rs"] mod collider;
+#[path = "instances.rs"] mod instances;
 use std::{sync::Arc};
 use std::cmp::Ordering;
-pub use collider::*;
+pub use instances::*;
 
 
 fn box_compare(a: &Arc<dyn Geometry + Send + Sync>, b: &Arc<dyn Geometry + Send + Sync>, axis: usize) -> Ordering {
