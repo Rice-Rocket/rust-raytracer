@@ -1,39 +1,9 @@
 #[path = "instances.rs"] mod instances;
 use std::{sync::Arc};
-use std::cmp::Ordering;
 pub use instances::*;
 
 
-fn box_compare(a: &Arc<dyn Geometry + Send + Sync>, b: &Arc<dyn Geometry + Send + Sync>, axis: usize) -> Ordering {
-    let box_a = a.bounding_box(0.0, 0.0).unwrap();
-    let box_b = b.bounding_box(0.0, 0.0).unwrap();
 
-    if box_a.minimum[axis] < box_b.minimum[axis] {
-        return Ordering::Less;
-    } else if box_a.minimum[axis] > box_b.minimum[axis] {
-        return Ordering::Greater;
-    } else {
-        return Ordering::Equal;
-    }
-}
-
-fn box_x_compare(a: &Arc<dyn Geometry + Send + Sync>, b: &Arc<dyn Geometry + Send + Sync>) -> Ordering {
-    box_compare(a, b, 0)
-}
-fn box_y_compare(a: &Arc<dyn Geometry + Send + Sync>, b: &Arc<dyn Geometry + Send + Sync>) -> Ordering {
-    box_compare(a, b, 1)
-}
-fn box_z_compare(a: &Arc<dyn Geometry + Send + Sync>, b: &Arc<dyn Geometry + Send + Sync>) -> Ordering {
-    box_compare(a, b, 2)
-}
-
-
-pub struct BVHNode {
-    pub left: Arc<dyn Geometry + Send + Sync>,
-    pub right: Arc<dyn Geometry + Send + Sync>,
-    pub bounding_box: Option<AABB>,
-    pub axis: usize
-}
 
 impl Geometry for BVHNode {
     fn intersect(&self, r: Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
@@ -88,13 +58,13 @@ impl Geometry for BVHNode {
 }
 
 impl BVHNode {
-    pub fn new(colliders: &Vec<Arc<dyn Geometry + Send + Sync>>, time_0: f32, time_1: f32, start: usize, end: usize) -> Self {
+    pub fn new(colliders: &Vec<Geometry>, time_0: f32, time_1: f32, start: usize, end: usize) -> Self {
         let axis = randuint(0, 2);
         let comparator = if axis == 0 { box_x_compare } else if axis == 2 { box_y_compare } else { box_z_compare };
         let obj_span = end - start;
         let mut temp_colliders = colliders.clone();
-        let left: Arc<dyn Geometry + Send + Sync>;
-        let right: Arc<dyn Geometry + Send + Sync>;
+        let left: Geometry;
+        let right: Geometry;
         if obj_span == 1 {
             left = temp_colliders[start].clone();
             right = temp_colliders[start].clone();

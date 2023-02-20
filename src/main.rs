@@ -34,17 +34,17 @@ fn default_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize)
     // Scene
     let mut scene = SceneColliders::new();
 
-    let mat_ground = Lambertian::new(Texture::solid_color(Rgb::new(0.8, 0.8, 0.0)));
-    let mat_center = Lambertian::new(Texture::solid_color(Rgb::new(0.1, 0.2, 0.5)));
-    let mat_left = Dielectric::new(1.5);
-    let mat_left_in = Dielectric::new(1.5);
-    let mat_right = Glossy::new(Rgb::new(0.8, 0.6, 0.2), 0.4);
+    let mat_ground = Material::lambertian(Texture::solid_color(Rgb::new(0.8, 0.8, 0.0)));
+    let mat_center = Material::lambertian(Texture::solid_color(Rgb::new(0.1, 0.2, 0.5)));
+    let mat_left = Material::dielectric(1.5);
+    let mat_left_in = Material::dielectric(1.5);
+    let mat_right = Material::glossy(Rgb::new(0.8, 0.6, 0.2), 0.4);
 
-    scene.add(Arc::new(Sphere::new(Point3::new(0.0, -100.5, -1.0), 100.0, Arc::new(mat_ground))));
-    scene.add(Arc::new(Sphere::new(Point3::new(0.0, 0.0, -1.0), 0.5, Arc::new(mat_center))));
-    scene.add(Arc::new(Sphere::new(Point3::new(-1.0, 0.0, -1.0), 0.5, Arc::new(mat_left))));
-    scene.add(Arc::new(Sphere::new(Point3::new(-1.0, 0.0, -1.0), -0.4, Arc::new(mat_left_in))));
-    scene.add(Arc::new(Sphere::new(Point3::new(1.0, 0.0, -1.0), 0.5, Arc::new(mat_right))));
+    scene.add(Geometry::sphere(Point3::new(0.0, -100.5, -1.0), 100.0, mat_ground));
+    scene.add(Geometry::sphere(Point3::new(0.0, 0.0, -1.0), 0.5, mat_center));
+    scene.add(Geometry::sphere(Point3::new(-1.0, 0.0, -1.0), 0.5, mat_left));
+    scene.add(Geometry::sphere(Point3::new(-1.0, 0.0, -1.0), -0.4, mat_left_in));
+    scene.add(Geometry::sphere(Point3::new(1.0, 0.0, -1.0), 0.5, mat_right));
 
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
@@ -75,10 +75,10 @@ fn random_spheres() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize
 
     // Scene
     let mut scene = SceneColliders::new();
-    let mut spheres: Vec<Arc<dyn Geometry + Send + Sync>> = Vec::new();
+    let mut spheres: Vec<Geometry> = Vec::new();
 
-    let mat_ground = Lambertian::new(Texture::checkered(Rgb::new(0.2, 0.3, 0.1), Rgb::new(0.9, 0.9, 0.9)));
-    scene.add(Arc::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, Arc::new(mat_ground))));
+    let mat_ground = Material::lambertian(Texture::checkered(Rgb::new(0.2, 0.3, 0.1), Rgb::new(0.9, 0.9, 0.9)));
+    scene.add(Geometry::sphere(Point3::new(0.0, -1000.0, 0.0), 1000.0, mat_ground));
 
     for a in -11..11 {
         for b in -11..11 {
@@ -87,31 +87,31 @@ fn random_spheres() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize
             if (center - Point3::new(4.0, 0.2, 0.0)).length() > 0.9 {
                 if choose_mat < 0.8 {
                     let albedo = Rgb::random() * Rgb::random();
-                    let mat = Lambertian::new(Texture::solid_color(albedo));
-                    spheres.push(Arc::new(Sphere::new(center, 0.2, Arc::new(mat))));
+                    let mat = Material::lambertian(Texture::solid_color(albedo));
+                    spheres.push(Geometry::sphere(center, 0.2, mat));
                 } else if choose_mat < 0.95 {
                     let albedo = Rgb::randrange(0.5, 1.0);
                     let fuzz = randrange(0.0, 0.5);
-                    let mat = Glossy::new(albedo, fuzz);
-                    spheres.push(Arc::new(Sphere::new(center, 0.2, Arc::new(mat))));
+                    let mat = Material::glossy(albedo, fuzz);
+                    spheres.push(Geometry::sphere(center, 0.2, mat));
                 } else {
-                    let mat = Dielectric::new(1.5);
-                    spheres.push(Arc::new(Sphere::new(center, 0.2, Arc::new(mat))));
+                    let mat = Material::dielectric(1.5);
+                    spheres.push(Geometry::sphere(center, 0.2, mat));
                 }
             }
         }
     }
 
-    let mat1 = Dielectric::new(1.5);
-    spheres.push(Arc::new(Sphere::new(Point3::new(0.0, 1.0, 0.0), 1.0, Arc::new(mat1))));
+    let mat1 = Material::dielectric(1.5);
+    spheres.push(Geometry::sphere(Point3::new(0.0, 1.0, 0.0), 1.0, mat1));
     
-    let mat2 = Lambertian::new(Texture::solid_color(Rgb::new(0.4, 0.2, 0.1)));
-    spheres.push(Arc::new(Sphere::new(Point3::new(-4.0, 1.0, 0.0), 1.0, Arc::new(mat2))));
+    let mat2 = Material::lambertian(Texture::solid_color(Rgb::new(0.4, 0.2, 0.1)));
+    spheres.push(Geometry::sphere(Point3::new(-4.0, 1.0, 0.0), 1.0, mat2));
     
-    let mat3 = Glossy::new(Rgb::new(0.7, 0.6, 0.5), 0.1);
-    spheres.push(Arc::new(Sphere::new(Point3::new(4.0, 1.0, 0.0), 1.0, Arc::new(mat3))));
+    let mat3 = Material::glossy(Rgb::new(0.7, 0.6, 0.5), 0.1);
+    spheres.push(Geometry::sphere(Point3::new(4.0, 1.0, 0.0), 1.0, mat3));
 
-    scene.add(Arc::new(BVHNode::new(&spheres, 0.0, 1.0, 0, spheres.len())));
+    scene.add(Geometry::bvh_node(&spheres, 0.0, 1.0, 0, spheres.len()));
     
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
@@ -142,10 +142,10 @@ fn random_moving_spheres() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize
 
     // Scene
     let mut scene = SceneColliders::new();
-    let mut spheres: Vec<Arc<dyn Geometry + Send + Sync>> = Vec::new();
+    let mut spheres: Vec<Geometry> = Vec::new();
 
-    let mat_ground = Lambertian::new(Texture::solid_color(Rgb::new(0.5, 0.5, 0.5)));
-    scene.add(Arc::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, Arc::new(mat_ground))));
+    let mat_ground = Material::lambertian(Texture::solid_color(Rgb::new(0.5, 0.5, 0.5)));
+    scene.add(Geometry::sphere(Point3::new(0.0, -1000.0, 0.0), 1000.0, mat_ground));
 
     for a in -21..21 {
         for b in -21..21 {
@@ -154,31 +154,31 @@ fn random_moving_spheres() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize
             if (center - Point3::new(4.0, 0.2, 0.0)).length() > 0.9 {
                 if choose_mat < 0.8 {
                     let albedo = Rgb::random() * Rgb::random();
-                    let mat = Lambertian::new(Texture::solid_color(albedo));
+                    let mat = Material::lambertian(Texture::solid_color(albedo));
                     let center2 = center + Vec3::new(0.0, randrange(0.0, 0.5), 0.0);
-                    spheres.push(Arc::new(MovingSphere::new(center, center2, 0.0, 1.0, 0.1, Arc::new(mat))));
+                    spheres.push(Geometry::moving_sphere(center, center2, 0.0, 1.0, 0.1, mat));
                 } else if choose_mat < 0.95 {
                     let albedo = Rgb::randrange(0.5, 1.0);
                     let fuzz = randrange(0.0, 0.5);
-                    let mat = Glossy::new(albedo, fuzz);
-                    spheres.push(Arc::new(Sphere::new(center, 0.1, Arc::new(mat))));
+                    let mat = Material::glossy(albedo, fuzz);
+                    spheres.push(Geometry::sphere(center, 0.1, mat));
                 } else {
-                    let mat = Dielectric::new(1.5);
-                    spheres.push(Arc::new(Sphere::new(center, 0.1, Arc::new(mat))));
+                    let mat = Material::dielectric(1.5);
+                    spheres.push(Geometry::sphere(center, 0.1, mat));
                 }
             }
         }
     }
-    scene.add(Arc::new(BVHNode::new(&spheres, 0.0, 1.0, 0, spheres.len())));
+    scene.add(Geometry::bvh_node(&spheres, 0.0, 1.0, 0, spheres.len()));
 
-    let mat1 = Dielectric::new(1.5);
-    scene.add(Arc::new(Sphere::new(Point3::new(0.0, 1.0, 0.0), 1.0, Arc::new(mat1))));
+    let mat1 = Material::dielectric(1.5);
+    scene.add(Geometry::sphere(Point3::new(0.0, 1.0, 0.0), 1.0, mat1));
     
-    let mat2 = Lambertian::new(Texture::solid_color(Rgb::new(0.4, 0.2, 0.1)));
-    scene.add(Arc::new(Sphere::new(Point3::new(-4.0, 1.0, 0.0), 1.0, Arc::new(mat2))));
+    let mat2 = Material::lambertian(Texture::solid_color(Rgb::new(0.4, 0.2, 0.1)));
+    scene.add(Geometry::sphere(Point3::new(-4.0, 1.0, 0.0), 1.0, mat2));
     
-    let mat3 = Glossy::new(Rgb::new(0.7, 0.6, 0.5), 0.1);
-    scene.add(Arc::new(Sphere::new(Point3::new(4.0, 1.0, 0.0), 1.0, Arc::new(mat3))));
+    let mat3 = Material::glossy(Rgb::new(0.7, 0.6, 0.5), 0.1);
+    scene.add(Geometry::sphere(Point3::new(4.0, 1.0, 0.0), 1.0, mat3));
     
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
@@ -210,9 +210,9 @@ fn two_spheres() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     // Scene
     let mut scene = SceneColliders::new();
 
-    let checker = Arc::new(Lambertian::new(Texture::checkered(Rgb::new(0.2, 0.3, 0.1), Rgb::new(0.9, 0.9, 0.9))));
-    scene.add(Arc::new(Sphere::new(Point3::new(0.0, -8.0, 0.0), 8.0, checker.clone())));
-    scene.add(Arc::new(Sphere::new(Point3::new(0.0, 8.0, 0.0), 8.0, checker.clone())));
+    let checker = Material::lambertian(Texture::checkered(Rgb::new(0.2, 0.3, 0.1), Rgb::new(0.9, 0.9, 0.9)));
+    scene.add(Geometry::sphere(Point3::new(0.0, -8.0, 0.0), 8.0, checker.clone()));
+    scene.add(Geometry::sphere(Point3::new(0.0, 8.0, 0.0), 8.0, checker.clone()));
 
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
@@ -244,9 +244,9 @@ fn two_perlin_spheres() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, u
     // Scene
     let mut scene = SceneColliders::new();
 
-    let pertext = Arc::new(Lambertian::new(Texture::noise(4.0, 7)));
-    scene.add(Arc::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, pertext.clone())));
-    scene.add(Arc::new(Sphere::new(Point3::new(0.0, 2.0, 0.0), 2.0, pertext.clone())));
+    let pertext = Material::lambertian(Texture::noise(4.0, 7));
+    scene.add(Geometry::sphere(Point3::new(0.0, -1000.0, 0.0), 1000.0, pertext.clone()));
+    scene.add(Geometry::sphere(Point3::new(0.0, 2.0, 0.0), 2.0, pertext.clone()));
 
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
@@ -279,8 +279,8 @@ fn earth() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     let mut scene = SceneColliders::new();
 
     let earth_texture = Texture::load_image("assets/earthmap.jpeg");
-    let earth_surface = Arc::new(Lambertian::new(earth_texture));
-    scene.add(Arc::new(Sphere::new(Point3::new(0.0, 0.0, 0.0), 2.0, earth_surface)));
+    let earth_surface = Material::lambertian(earth_texture);
+    scene.add(Geometry::sphere(Point3::new(0.0, 0.0, 0.0), 2.0, earth_surface));
 
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
@@ -312,14 +312,14 @@ fn rect_light() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     // Scene
     let mut scene = SceneColliders::new();
 
-    let texture = Arc::new(Lambertian::new(Texture::solid_color(Rgb::new(0.2, 0.8, 1.0))));
-    let checker = Arc::new(Lambertian::new(Texture::solid_color(Rgb::new(0.9, 0.9, 0.9))));
-    scene.add(Arc::new(Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, checker)));
-    scene.add(Arc::new(Sphere::new(Point3::new(0.0, 2.0, 0.0), 2.0, texture)));
+    let texture = Material::lambertian(Texture::solid_color(Rgb::new(0.2, 0.8, 1.0)));
+    let checker = Material::lambertian(Texture::solid_color(Rgb::new(0.9, 0.9, 0.9)));
+    scene.add(Geometry::sphere(Point3::new(0.0, -1000.0, 0.0), 1000.0, checker));
+    scene.add(Geometry::sphere(Point3::new(0.0, 2.0, 0.0), 2.0, texture));
 
-    let difflight = Arc::new(Emissive::new(Rgb::new(5.0, 2.0, 2.0)));
-    scene.add(Arc::new(XYRect::new(3.0, 5.0, 1.0, 3.0, -2.0, difflight.clone())));
-    scene.add(Arc::new(Sphere::new(Point3::new(0.0, 7.0, 0.0), 1.5, difflight)));
+    let difflight = Material::emissive(Rgb::new(5.0, 2.0, 2.0));
+    scene.add(Geometry::xyrect(3.0, 5.0, 1.0, 3.0, -2.0, difflight.clone()));
+    scene.add(Geometry::sphere(Point3::new(0.0, 7.0, 0.0), 1.5, difflight));
 
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
@@ -351,20 +351,20 @@ fn cornell_box() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     // Scene
     let mut scene = SceneColliders::new();
 
-    let red = Arc::new(Lambertian::new(Texture::solid_color(Rgb::new(0.65, 0.05, 0.05))));
-    let white = Arc::new(Lambertian::new(Texture::solid_color(Rgb::new(0.73, 0.73, 0.73))));
-    let green = Arc::new(Lambertian::new(Texture::solid_color(Rgb::new(0.12, 0.45, 0.15))));
-    let light = Arc::new(Emissive::new(Rgb::new(30.0, 30.0, 30.0)));
+    let red = Material::lambertian(Texture::solid_color(Rgb::new(0.65, 0.05, 0.05)));
+    let white = Material::lambertian(Texture::solid_color(Rgb::new(0.73, 0.73, 0.73)));
+    let green = Material::lambertian(Texture::solid_color(Rgb::new(0.12, 0.45, 0.15)));
+    let light = Material::emissive(Rgb::new(30.0, 30.0, 30.0));
 
-    scene.add(Arc::new(YZRect::new(0.0, 555.0, 0.0, 555.0, 555.0, green)));
-    scene.add(Arc::new(YZRect::new(0.0, 555.0, 0.0, 555.0, 0.0, red)));
-    scene.add(Arc::new(XZRect::new(213.0, 343.0, 227.0, 332.0, 554.0, light)));
-    scene.add(Arc::new(XZRect::new(0.0, 555.0, 0.0, 555.0, 0.0, white.clone())));
-    scene.add(Arc::new(XZRect::new(0.0, 555.0, 0.0, 555.0, 555.0, white.clone())));
-    scene.add(Arc::new(XYRect::new(0.0, 555.0, 0.0, 555.0, 555.0, white.clone())));
+    scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 555.0, green));
+    scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 0.0, red));
+    scene.add(Geometry::xzrect(213.0, 343.0, 227.0, 332.0, 554.0, light));
+    scene.add(Geometry::xzrect(0.0, 555.0, 0.0, 555.0, 0.0, white.clone()));
+    scene.add(Geometry::xzrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
+    scene.add(Geometry::xyrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
 
-    scene.add(Arc::new(TranslateInstance::new(Arc::new(YRotationInstance::new(Arc::new(Cuboid::new(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 330.0, 165.0), white.clone())), 15.0)), Vec3::new(265.0, 0.0, 295.0))));
-    scene.add(Arc::new(TranslateInstance::new(Arc::new(YRotationInstance::new(Arc::new(Cuboid::new(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 165.0, 165.0), white.clone())), -18.0)), Vec3::new(130.0, 0.0, 65.0))));
+    scene.add(Geometry::instance_translation(Geometry::instance_y_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 330.0, 165.0), white.clone()), 15.0), Vec3::new(265.0, 0.0, 295.0)));
+    scene.add(Geometry::instance_translation(Geometry::instance_y_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 165.0, 165.0), white.clone()), -18.0), Vec3::new(130.0, 0.0, 65.0)));
 
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
@@ -396,20 +396,20 @@ fn cornell_smoke() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize)
     // Scene
     let mut scene = SceneColliders::new();
 
-    let red = Arc::new(Lambertian::new(Texture::solid_color(Rgb::new(0.65, 0.05, 0.05))));
-    let white = Arc::new(Lambertian::new(Texture::solid_color(Rgb::new(0.73, 0.73, 0.73))));
-    let green = Arc::new(Lambertian::new(Texture::solid_color(Rgb::new(0.12, 0.45, 0.15))));
-    let light = Arc::new(Emissive::new(Rgb::new(7.0, 7.0, 7.0)));
+    let red = Material::lambertian(Texture::solid_color(Rgb::new(0.65, 0.05, 0.05)));
+    let white = Material::lambertian(Texture::solid_color(Rgb::new(0.73, 0.73, 0.73)));
+    let green = Material::lambertian(Texture::solid_color(Rgb::new(0.12, 0.45, 0.15)));
+    let light = Material::emissive(Rgb::new(7.0, 7.0, 7.0));
 
-    scene.add(Arc::new(YZRect::new(0.0, 555.0, 0.0, 555.0, 555.0, green)));
-    scene.add(Arc::new(YZRect::new(0.0, 555.0, 0.0, 555.0, 0.0, red)));
-    scene.add(Arc::new(XZRect::new(113.0, 443.0, 127.0, 432.0, 554.0, light)));
-    scene.add(Arc::new(XZRect::new(0.0, 555.0, 0.0, 555.0, 0.0, white.clone())));
-    scene.add(Arc::new(XZRect::new(0.0, 555.0, 0.0, 555.0, 555.0, white.clone())));
-    scene.add(Arc::new(XYRect::new(0.0, 555.0, 0.0, 555.0, 555.0, white.clone())));
+    scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 555.0, green));
+    scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 0.0, red));
+    scene.add(Geometry::xzrect(113.0, 443.0, 127.0, 432.0, 554.0, light));
+    scene.add(Geometry::xzrect(0.0, 555.0, 0.0, 555.0, 0.0, white.clone()));
+    scene.add(Geometry::xzrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
+    scene.add(Geometry::xyrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
 
-    scene.add(Arc::new(ConstantMedium::new(Arc::new(TranslateInstance::new(Arc::new(YRotationInstance::new(Arc::new(Cuboid::new(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 330.0, 165.0), white.clone())), 15.0)), Vec3::new(265.0, 0.0, 295.0))), 0.01, Rgb::new(0.0, 0.0, 0.0))));
-    scene.add(Arc::new(ConstantMedium::new(Arc::new(TranslateInstance::new(Arc::new(YRotationInstance::new(Arc::new(Cuboid::new(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 165.0, 165.0), white.clone())), -18.0)), Vec3::new(130.0, 0.0, 65.0))), 0.01, Rgb::new(1.0, 1.0, 1.0))));
+    scene.add(Geometry::constant_medium(Geometry::instance_translation(Geometry::instance_y_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 330.0, 165.0), white.clone()), 15.0), Vec3::new(265.0, 0.0, 295.0)), 0.01, Rgb::new(0.0, 0.0, 0.0)));
+    scene.add(Geometry::constant_medium(Geometry::instance_translation(Geometry::instance_y_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 165.0, 165.0), white.clone()), -18.0), Vec3::new(130.0, 0.0, 65.0)), 0.01, Rgb::new(1.0, 1.0, 1.0)));
 
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
@@ -441,9 +441,9 @@ fn final_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     // Scene
     let mut scene = SceneColliders::new();
 
-    let ground = Arc::new(Lambertian::new(Texture::solid_color(Rgb::new(0.48, 0.83, 0.53))));
+    let ground = Material::lambertian(Texture::solid_color(Rgb::new(0.48, 0.83, 0.53)));
     let boxes_per_side = 20;
-    let mut boxes: Vec<Arc<dyn Geometry + Send + Sync>> = Vec::new();
+    let mut boxes: Vec<Geometry> = Vec::new();
 
     for i in 0..boxes_per_side {
         for j in 0..boxes_per_side {
@@ -455,35 +455,35 @@ fn final_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
             let y1 = randrange(1.0, 101.0);
             let z1 = z0 + w;
 
-            boxes.push(Arc::new(Cuboid::new(Point3::new(x0, y0, z0), Point3::new(x1, y1, z1), ground.clone())))
+            boxes.push(Geometry::cuboid(Point3::new(x0, y0, z0), Point3::new(x1, y1, z1), ground.clone()))
         }
     }
-    scene.add(Arc::new(BVHNode::new(&boxes, 0.0, 1.0, 0, boxes.len())));
+    scene.add(Geometry::bvh_node(&boxes, 0.0, 1.0, 0, boxes.len()));
     
-    let light = Arc::new(Emissive::new(Rgb::new(10.0, 10.0, 10.0)));
-    scene.add(Arc::new(XZRect::new(123.0, 423.0, 147.0, 412.0, 554.0, light.clone())));
+    let light = Material::emissive(Rgb::new(10.0, 10.0, 10.0));
+    scene.add(Geometry::xzrect(123.0, 423.0, 147.0, 412.0, 554.0, light.clone()));
 
-    scene.add(Arc::new(Sphere::new(Point3::new(260.0, 150.0, 45.0), 50.0, Arc::new(Dielectric::new(1.5)))));
-    scene.add(Arc::new(Sphere::new(Point3::new(0.0, 150.0, 145.0), 50.0, Arc::new(Glossy::new(Rgb::new(0.8, 0.8, 0.9), 1.0)))));
+    scene.add(Geometry::sphere(Point3::new(260.0, 150.0, 45.0), 50.0, Material::dielectric(1.5)));
+    scene.add(Geometry::sphere(Point3::new(0.0, 150.0, 145.0), 50.0, Material::glossy(Rgb::new(0.8, 0.8, 0.9), 1.0)));
 
-    let boundary = Arc::new(Sphere::new(Point3::new(360.0, 150.0, 145.0), 70.0, Arc::new(Dielectric::new(1.5))));
+    let boundary = Geometry::sphere(Point3::new(360.0, 150.0, 145.0), 70.0, Material::dielectric(1.5));
     scene.add(boundary.clone());
-    scene.add(Arc::new(ConstantMedium::new(boundary, 0.2, Rgb::new(0.2, 0.4, 0.9))));
-    let boundary = Arc::new(Sphere::new(Point3::origin(), 5000.0, Arc::new(Dielectric::new(1.5))));
-    scene.add(Arc::new(ConstantMedium::new(boundary, 0.0001, Rgb::new(1.0, 1.0, 1.0))));
+    scene.add(Geometry::constant_medium(boundary, 0.2, Rgb::new(0.2, 0.4, 0.9)));
+    let boundary = Geometry::sphere(Point3::origin(), 5000.0, Material::dielectric(1.5));
+    scene.add(Geometry::constant_medium(boundary, 0.0001, Rgb::new(1.0, 1.0, 1.0)));
 
-    let emat = Arc::new(Lambertian::new(Texture::load_image("assets/earthmap.jpeg")));
-    scene.add(Arc::new(Sphere::new(Point3::new(400.0, 200.0, 400.0), 100.0, emat)));
+    let emat = Material::lambertian(Texture::load_image("assets/earthmap.jpeg"));
+    scene.add(Geometry::sphere(Point3::new(400.0, 200.0, 400.0), 100.0, emat));
     let pertext = Texture::noise(0.1, 7);
-    scene.add(Arc::new(Sphere::new(Point3::new(220.0, 280.0, 300.0), 80.0, Arc::new(Lambertian::new(pertext)))));
+    scene.add(Geometry::sphere(Point3::new(220.0, 280.0, 300.0), 80.0, Material::lambertian(pertext)));
 
-    let mut spheres: Vec<Arc<dyn Geometry + Send + Sync>> = Vec::new();
-    let white = Arc::new(Lambertian::new(Texture::solid_color(Rgb::new(0.73, 0.73, 0.73))));
+    let mut spheres: Vec<Geometry> = Vec::new();
+    let white = Material::lambertian(Texture::solid_color(Rgb::new(0.73, 0.73, 0.73)));
     let ns = 1000;
     for _ in 0..ns {
-        spheres.push(Arc::new(Sphere::new(Point3::randrange(0.0, 165.0), 10.0, white.clone())));
+        spheres.push(Geometry::sphere(Point3::randrange(0.0, 165.0), 10.0, white.clone()));
     }
-    scene.add(Arc::new(TranslateInstance::new(Arc::new(YRotationInstance::new(Arc::new(BVHNode::new(&spheres, 0.0, 1.0, 0, spheres.len())), 15.0)), Vec3::new(-100.0, 270.0, 395.0))));
+    scene.add(Geometry::instance_translation(Geometry::instance_y_rotation(Geometry::bvh_node(&spheres, 0.0, 1.0, 0, spheres.len()), 15.0), Vec3::new(-100.0, 270.0, 395.0)));
 
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }

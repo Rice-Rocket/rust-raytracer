@@ -6,6 +6,7 @@ use std::{fs::File, path::Path, io::BufReader};
 use image::{self, GenericImageView, DynamicImage};
 
 
+#[derive(Clone)]
 pub enum TextureType {
     SolidColor,
     Checkered,
@@ -13,6 +14,7 @@ pub enum TextureType {
     ImageTexture
 }
 
+#[derive(Clone)]
 pub struct Texture {
     pub texture_type: TextureType,
 
