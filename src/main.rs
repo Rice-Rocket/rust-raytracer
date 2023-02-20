@@ -327,10 +327,10 @@ fn rect_light() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
 fn cornell_box() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     // Image
     let aspect_ratio = 1.0;
-    let image_width = 400;
+    let image_width = 600;
     let image_height = (image_width as f32 / aspect_ratio) as u32;
     let samples_per_pixel = 200;
-    let max_depth = 50;
+    let max_depth = 200;
     let background = Rgb::new(0.0, 0.0, 0.0);
 
     // Camera
