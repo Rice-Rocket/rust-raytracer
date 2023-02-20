@@ -1,0 +1,5 @@
+standard cornell box:
+image size: 600
+samples per pixel: 200
+max depth: 200
+render time: 107s
