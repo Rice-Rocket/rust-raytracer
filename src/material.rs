@@ -20,7 +20,7 @@ impl HitRecord {
         Self {
             point: point,
             normal: Vec3::new(0.0, 0.0, 0.0),
-            material: Arc::new(Lambertian::new(Arc::new(SolidColor::new(Rgb::origin())))),
+            material: Arc::new(Lambertian::new(Texture::solid_color(Rgb::origin()))),
             t: t,
             u: 0.0,
             v: 0.0,
@@ -45,11 +45,11 @@ pub trait Material {
 }
 
 pub struct Lambertian {
-    pub albedo: Arc<dyn Texture + Send + Sync>
+    pub albedo: Texture
 }
 
 impl Lambertian {
-    pub fn new(albedo: Arc<dyn Texture + Send + Sync>) -> Self {
+    pub fn new(albedo: Texture) -> Self {
         Self {
             albedo: albedo
         }
@@ -136,13 +136,13 @@ impl Material for Dielectric {
 
 
 pub struct Isotropic {
-    pub albedo: Arc<SolidColor>
+    pub albedo: Texture
 }
 
 impl Isotropic {
     pub fn new(color: Rgb) -> Self {
         Self {
-            albedo: Arc::new(SolidColor::new(color))
+            albedo: Texture::solid_color(color)
         }
     }
 }
@@ -157,13 +157,13 @@ impl Material for Isotropic {
 
 
 pub struct Emissive {
-    pub color: Arc<SolidColor>
+    pub color: Texture
 }
 
 impl Emissive {
     pub fn new(color: Rgb) -> Self {
         Self {
-            color: Arc::new(SolidColor::new(color))
+            color: Texture::solid_color(color)
         }
     }
 }
