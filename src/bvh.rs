@@ -28,8 +28,6 @@ fn box_z_compare(a: &Arc<dyn Geometry + Send + Sync>, b: &Arc<dyn Geometry + Sen
 }
 
 
-
-
 pub struct BVHNode {
     pub left: Arc<dyn Geometry + Send + Sync>,
     pub right: Arc<dyn Geometry + Send + Sync>,

@@ -70,7 +70,6 @@ impl Material for Lambertian {
     }
 }
 
-
 pub struct Glossy {
     pub albedo: Rgb,
     pub fuzz: f32
@@ -93,7 +92,6 @@ impl Material for Glossy {
         return scattered.direction.dot(rec.normal) > 0.0;
     }
 }
-
 
 pub struct Dielectric {
     pub refraction_index: f32
@@ -156,7 +154,6 @@ impl Material for Isotropic {
         return true;
     }
 }
-
 
 
 pub struct Emissive {

@@ -1,6 +1,7 @@
 #[path = "aabb.rs"] mod aabb;
 pub use aabb::*;
 use std::sync::Arc;
+use std::rc::Rc;
 
 
 pub trait Geometry {
@@ -362,7 +363,7 @@ impl Geometry for ConstantMedium {
 
 
 pub struct SceneColliders {
-    pub objects: Vec<Arc<dyn Geometry + Sync + Send>>,
+    pub objects: Vec<Arc<dyn Geometry + Send + Sync>>,
 }
 
 impl SceneColliders {
@@ -371,7 +372,7 @@ impl SceneColliders {
             objects: Vec::new(),
         }
     }
-    pub fn add(&mut self, object: Arc<dyn Geometry + Sync + Send>) {
+    pub fn add(&mut self, object: Arc<dyn Geometry + Send + Sync>) {
         self.objects.push(object);
     }
     pub fn intersect(&self, r: Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {

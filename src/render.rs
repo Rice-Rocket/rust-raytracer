@@ -1,12 +1,13 @@
 use image::{self, ImageBuffer};
-use std::sync::Arc;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::time::SystemTime;
-use std::{thread, sync::Mutex};
+use std::sync::Mutex;
+use linya::{Bar, Progress};
 use num_cpus;
 use math::round::half_up;
 #[path = "camera.rs"] mod camera;
 pub use camera::*;
+use rayon::prelude::*;
 
 
 
@@ -76,7 +77,7 @@ pub fn render(mut imgbuf: &mut ImageBuffer<image::Rgb<u8>, Vec<u8>>, scene: &Sce
 
 
 
-pub fn render_worker(background: Rgb, img_width: u32, img_height: u32, samples_per_thread: usize, thread_cam: Arc<Camera>, thread_scene: Arc<SceneColliders>, max_depth: usize, n_threads: usize, can_print: bool) -> ImageBuffer<image::Rgb<f32>, Vec<f32>> {
+pub fn render_worker(background: Rgb, img_width: u32, img_height: u32, samples_per_thread: usize, thread_cam: &Camera, thread_scene: &SceneColliders, max_depth: usize, n_threads: usize, bar: &Bar, progress: &Mutex<Progress>) -> ImageBuffer<image::Rgb<f32>, Vec<f32>> {
     let mut subimage = ImageBuffer::new(img_width, img_height);
     for j in (0..img_height).rev() {
         for i in 0..img_width {
@@ -104,9 +105,7 @@ pub fn render_worker(background: Rgb, img_width: u32, img_height: u32, samples_p
 
             subimage.put_pixel(i, img_height - j - 1, image::Rgb([ir / (n_threads - 1) as f32, ig / (n_threads - 1) as f32, ib / (n_threads - 1) as f32]));
         }
-        if can_print {
-            print!("Scanline: {} / {}        \r", img_height - j, img_height);
-        }
+        progress.lock().unwrap().inc_and_draw(bar, 1);
     }
     return subimage;
 }
@@ -115,40 +114,29 @@ pub fn render_worker(background: Rgb, img_width: u32, img_height: u32, samples_p
 
 pub fn render_multi(scene: SceneColliders, cam: Camera, background: Rgb, max_depth: usize, samples_per_pixel: usize, img_width: u32, img_height: u32) -> ImageBuffer<image::Rgb<u8>, Vec<u8>> {
     let n_threads = num_cpus::get();
-    let mut handles = Vec::new();
     let samples_per_thread = samples_per_pixel / n_threads;
-    let global_scene = Arc::new(scene);
-    let global_cam = Arc::new(cam);
-    let global_buf: Arc<Mutex<ImageBuffer<image::Rgb<f32>, Vec<f32>>>> = Arc::new(Mutex::new(ImageBuffer::new(img_width, img_height)));
-
+    let global_buf: Mutex<ImageBuffer<image::Rgb<f32>, Vec<f32>>> = Mutex::new(ImageBuffer::new(img_width, img_height));
     let time_start = SystemTime::now();
+    let progress = Mutex::new(Progress::new());
 
-    for i in 0..n_threads {
-        let thread_buf = global_buf.clone();
-        let thread_scene = global_scene.clone();
-        let thread_cam = global_cam.clone();
-
-        handles.push(thread::spawn(move || {
-            let subimage = render_worker(
-                background, img_width, img_height, samples_per_thread, 
-                thread_cam, thread_scene, max_depth, n_threads, i == n_threads - 1
-            );
-            let mut img_data = thread_buf.lock().unwrap();
-            for i in 0..img_width {
-                for j in 0..img_height {
-                    let p = img_data.get_pixel_mut(i, j);
-                    let pix = *subimage.get_pixel(i, j);
-                    p.0[0] += pix.0[0];
-                    p.0[1] += pix.0[1];
-                    p.0[2] += pix.0[2];
-                }
+    (0..n_threads).into_par_iter().for_each(|i| {
+        let bar = progress.lock().unwrap().bar(img_height as usize, format!("Rendering [Thread {}]", i));
+        let subimage = render_worker(
+            background, img_width, img_height, samples_per_thread, &cam, 
+            &scene, max_depth, n_threads, &bar, &progress
+        );
+        let mut imgdata = global_buf.lock().unwrap();
+        for j in 0..img_width {
+            for k in 0..img_height {
+                let p = imgdata.get_pixel_mut(j, k);
+                let pix = *subimage.get_pixel(j, k);
+                p.0[0] += pix.0[0];
+                p.0[1] += pix.0[1];
+                p.0[2] += pix.0[2];
             }
-        }));
-    }
+        }
+    });
 
-    for handle in handles {
-        let _ = handle.join();
-    }
     let imgbuf_f32 = global_buf.lock().unwrap().clone();
     let mut finalbuf = ImageBuffer::new(img_width, img_height);
 

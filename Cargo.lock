@@ -146,8 +146,10 @@ dependencies = [
  "image",
  "indicatif",
  "libmath",
+ "linya",
  "num_cpus",
  "rand 0.8.5",
+ "rayon",
  "term_cursor",
 ]
 
@@ -323,6 +325,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "dfd3416934a853ae80d5c3b006f632dfcbaf320300c5167e88a469e9ac214502"
 dependencies = [
  "rand 0.3.23",
+]
+
+[[package]]
+name = "linya"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3bcdb9f705e053eac4bf2b1c64522bcb2d0b442a80398e359bbec8595598af1"
+dependencies = [
+ "terminal_size",
 ]
 
 [[package]]
@@ -635,6 +646,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e225e1afb8bf56aa077366fced39df360db6ec09af1d9fb0b0591843e8482629"
 dependencies = [
  "termios",
+ "winapi",
+]
+
+[[package]]
+name = "terminal_size"
+version = "0.1.17"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "633c1a546cee861a1a6d0dc69ebeca693bf4296661ba7852b9d21d159e0506df"
+dependencies = [
+ "libc",
  "winapi",
 ]
 
