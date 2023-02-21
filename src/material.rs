@@ -8,7 +8,7 @@ use std::sync::Arc;
 pub struct HitRecord {
     pub point: Point3,
     pub normal: Vec3,
-    pub material: Material,
+    pub material: Arc<Material>,
     pub t: f32,
     pub u: f32,
     pub v: f32,
@@ -20,7 +20,7 @@ impl HitRecord {
         Self {
             point: point,
             normal: Vec3::new(0.0, 0.0, 0.0),
-            material: Material::lambertian(Texture::solid_color(Rgb::origin())),
+            material: Arc::new(Material::lambertian(Texture::solid_color(Rgb::origin()))),
             t: t,
             u: 0.0,
             v: 0.0,

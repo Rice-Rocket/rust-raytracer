@@ -1,7 +1,7 @@
 #[path = "perlin.rs"] mod perlin;
 pub use perlin::*;
 
-use std::{fs::File, path::Path, io::BufReader};
+use std::{fs::File, path::Path, io::BufReader, sync::Arc};
 
 use image::{self, GenericImageView, DynamicImage};
 
@@ -28,7 +28,7 @@ pub struct Texture {
     pub bytes_per_scanline: Option<u32>,
     pub width: Option<u32>,
     pub height: Option<u32>,
-    pub data: Option<DynamicImage>
+    pub data: Option<Vec<(u8, u8, u8)>>
 }
 
 impl Texture {
@@ -79,6 +79,13 @@ impl Texture {
         let data = image::open(&Path::new(&path)).unwrap();
         let (width, height) = data.dimensions();
         let bytes_per_scanline = bytes_per_pixel * width;
+
+        let mut data_vec = Vec::new();
+        for row in data.as_rgb8().unwrap().rows() {
+            for pixel in row {
+                data_vec.push((pixel.0[0], pixel.0[1], pixel.0[2]));
+            }
+        }
         Self {
             texture_type: TextureType::ImageTexture,
             color: None,
@@ -89,14 +96,14 @@ impl Texture {
             bytes_per_scanline: Some(bytes_per_scanline),
             width: Some(width),
             height: Some(height),
-            data: Some(data)
+            data: Some(data_vec)
         }
     }
 
     fn get_solid_color(&self, _u: f32, _v: f32, _point: Point3) -> Rgb {
         self.color.unwrap()
     }
-    fn get_checkered_color(&self, u: f32, v: f32, point: Point3) -> Rgb {
+    fn get_checkered_color(&self, _u: f32, _v: f32, point: Point3) -> Rgb {
         let sines = (10.0 * point.x).sin() * (10.0 * point.y).sin() * (10.0 * point.z).sin();
         if sines < 0.0 {
             self.color.unwrap()
@@ -119,8 +126,8 @@ impl Texture {
         if i >= self.width.unwrap() {i = self.width.unwrap() - 1};
         if j >= self.height.unwrap() {j = self.height.unwrap() - 1};
         let color_scale = 1.0 / 255.0;
-        let pixel = self.data.as_ref().unwrap().get_pixel(i, j);
-        return Rgb::new(pixel.0[0] as f32 * color_scale, pixel.0[1] as f32 * color_scale, pixel.0[2] as f32 * color_scale);
+        let pixel = self.data.as_ref().unwrap()[(j * self.width.unwrap() + i) as usize];
+        return Rgb::new(pixel.0 as f32 * color_scale, pixel.1 as f32 * color_scale, pixel.2 as f32 * color_scale);
     }
 
     pub fn get_color(&self, u: f32, v: f32, point: Point3) -> Rgb {

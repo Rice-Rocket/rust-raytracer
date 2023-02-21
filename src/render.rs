@@ -120,7 +120,7 @@ pub fn render_multi(scene: SceneColliders, cam: Camera, background: Rgb, max_dep
     let progress = Mutex::new(Progress::new());
 
     (0..n_threads).into_par_iter().for_each(|i| {
-        let bar = progress.lock().unwrap().bar(img_height as usize, format!("Rendering [Thread {}]", i));
+        let bar = progress.lock().unwrap().bar(img_height as usize, format!("Rendering [Thread {}]", i + 1));
         let subimage = render_worker(
             background, img_width, img_height, samples_per_thread, &cam, 
             &scene, max_depth, n_threads, &bar, &progress
