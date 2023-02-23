@@ -1,7 +1,7 @@
 #[path = "ray.rs"] mod ray;
 pub use ray::*;
 
-
+#[derive(Clone)]
 pub struct Perlin {
     point_count: usize,
     rand_vec: Vec<Vec3>,

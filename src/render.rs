@@ -1,7 +1,7 @@
 use image::{self, ImageBuffer};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::time::SystemTime;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use linya::{Bar, Progress};
 use num_cpus;
 use math::round::half_up;
@@ -21,8 +21,8 @@ pub fn ray_color(r: Ray, background: Rgb, scene: &SceneColliders, depth: usize) 
         Some(rec) => {
             let mut scattered = Ray::new(Vec3::origin(), Vec3::origin(), 0.0);
             let mut attenuation = Vec3::origin();
-            let emitted = rec.material.emitted(rec.u, rec.v, rec.point);
-            match rec.material.scatter(r, &mut attenuation, rec.clone(), &mut scattered) {
+            let emitted = rec.material.emitted(rec.u, rec.v, rec.point, &scene.atlas);
+            match rec.material.scatter(r, &mut attenuation, rec.clone(), &mut scattered, &scene.atlas) {
                 true => return emitted + attenuation * ray_color(scattered, background, scene, depth - 1),
                 false => return emitted
             }
@@ -120,7 +120,7 @@ pub fn render_multi(scene: SceneColliders, cam: Camera, background: Rgb, max_dep
     let progress = Mutex::new(Progress::new());
 
     (0..n_threads).into_par_iter().for_each(|i| {
-        let bar = progress.lock().unwrap().bar(img_height as usize, format!("Rendering [Thread {}]", i));
+        let bar = progress.lock().unwrap().bar(img_height as usize, format!("Rendering [Thread {}]", i + 1));
         let subimage = render_worker(
             background, img_width, img_height, samples_per_thread, &cam, 
             &scene, max_depth, n_threads, &bar, &progress
