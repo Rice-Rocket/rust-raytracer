@@ -1,9 +1,27 @@
 #[path = "perlin.rs"] mod perlin;
 pub use perlin::*;
 
-use std::{fs::File, path::Path, io::BufReader, sync::Arc};
+use std::{fs::File, path::Path, io::BufReader, sync::Arc, sync::Mutex};
 
 use image::{self, GenericImageView, DynamicImage};
+
+
+pub struct ImageTextureAtlas {
+    pub images: Vec<DynamicImage>,
+}
+
+impl ImageTextureAtlas {
+    pub fn new() -> Self {
+        Self {
+            images: Vec::new()
+        }
+    }
+    pub fn load(&mut self, path: &str) -> usize {
+        self.images.push(image::open(&Path::new(&path)).unwrap());
+        return self.images.len() - 1;
+    }
+}
+
 
 
 #[derive(Clone)]
@@ -28,7 +46,7 @@ pub struct Texture {
     pub bytes_per_scanline: Option<u32>,
     pub width: Option<u32>,
     pub height: Option<u32>,
-    pub data: Option<Vec<(u8, u8, u8)>>
+    pub img_data_idx: Option<usize>
 }
 
 impl Texture {
@@ -43,7 +61,7 @@ impl Texture {
             bytes_per_scanline: None,
             width: None,
             height: None,
-            data: None
+            img_data_idx: None
         }
     }
     pub fn checkered(odd_color: Rgb, even_color: Rgb) -> Self {
@@ -57,7 +75,7 @@ impl Texture {
             bytes_per_scanline: None,
             width: None,
             height: None,
-            data: None
+            img_data_idx: None
         }
     }
     pub fn noise(scale: f32, turb: usize) -> Self {
@@ -71,21 +89,14 @@ impl Texture {
             bytes_per_scanline: None,
             width: None,
             height: None,
-            data: None
+            img_data_idx: None
         }
     }
-    pub fn load_image(path: &str) -> Self {
+    pub fn image(atlas: &Arc<Mutex<ImageTextureAtlas>>, img_data_idx: usize) -> Self {
         let bytes_per_pixel = 3;
-        let data = image::open(&Path::new(&path)).unwrap();
-        let (width, height) = data.dimensions();
+        let (width, height) = atlas.lock().unwrap().images[img_data_idx].dimensions();
         let bytes_per_scanline = bytes_per_pixel * width;
 
-        let mut data_vec = Vec::new();
-        for row in data.as_rgb8().unwrap().rows() {
-            for pixel in row {
-                data_vec.push((pixel.0[0], pixel.0[1], pixel.0[2]));
-            }
-        }
         Self {
             texture_type: TextureType::ImageTexture,
             color: None,
@@ -96,7 +107,7 @@ impl Texture {
             bytes_per_scanline: Some(bytes_per_scanline),
             width: Some(width),
             height: Some(height),
-            data: Some(data_vec)
+            img_data_idx: Some(img_data_idx)
         }
     }
 
@@ -118,7 +129,7 @@ impl Texture {
     // fn get_noise_color(&self, _u: f32, _v: f32, point: Point3) -> Rgb {
     //     Rgb::new(1.0, 1.0, 1.0) * self.noise.turb(point * self.scale, self.turb)
         // }
-    fn get_image_color(&self, u_in: f32, v_in: f32, _point: Point3) -> Rgb {
+    fn get_image_color(&self, u_in: f32, v_in: f32, _point: Point3, atlas: &Arc<Mutex<ImageTextureAtlas>>) -> Rgb {
         let u = clamp(u_in, 0.0, 1.0);
         let v = 1.0 - clamp(v_in, 0.0, 1.0);
         let mut i = (u * self.width.unwrap() as f32) as u32;
@@ -126,16 +137,16 @@ impl Texture {
         if i >= self.width.unwrap() {i = self.width.unwrap() - 1};
         if j >= self.height.unwrap() {j = self.height.unwrap() - 1};
         let color_scale = 1.0 / 255.0;
-        let pixel = self.data.as_ref().unwrap()[(j * self.width.unwrap() + i) as usize];
-        return Rgb::new(pixel.0 as f32 * color_scale, pixel.1 as f32 * color_scale, pixel.2 as f32 * color_scale);
+        let pixel = atlas.lock().unwrap().images[self.img_data_idx.unwrap()].get_pixel(i, j);
+        return Rgb::new(pixel.0[0] as f32 * color_scale, pixel.0[1] as f32 * color_scale, pixel.0[2] as f32 * color_scale);
     }
 
-    pub fn get_color(&self, u: f32, v: f32, point: Point3) -> Rgb {
+    pub fn get_color(&self, u: f32, v: f32, point: Point3, atlas: &Arc<Mutex<ImageTextureAtlas>>) -> Rgb {
         match self.texture_type {
             TextureType::SolidColor => self.get_solid_color(u, v, point),
             TextureType::Checkered => self.get_checkered_color(u, v, point),
             TextureType::NoiseTexture => self.get_noise_color(u, v, point),
-            TextureType::ImageTexture => self.get_image_color(u, v, point),
+            TextureType::ImageTexture => self.get_image_color(u, v, point, atlas),
         }
     }
 }

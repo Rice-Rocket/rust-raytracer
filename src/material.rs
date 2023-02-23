@@ -1,6 +1,6 @@
 #[path = "texture.rs"] mod texture;
 pub use texture::*;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 
 
@@ -8,7 +8,7 @@ use std::sync::Arc;
 pub struct HitRecord {
     pub point: Point3,
     pub normal: Vec3,
-    pub material: Arc<Material>,
+    pub material: Material,
     pub t: f32,
     pub u: f32,
     pub v: f32,
@@ -20,7 +20,7 @@ impl HitRecord {
         Self {
             point: point,
             normal: Vec3::new(0.0, 0.0, 0.0),
-            material: Arc::new(Material::lambertian(Texture::solid_color(Rgb::origin()))),
+            material: Material::lambertian(Texture::solid_color(Rgb::origin())),
             t: t,
             u: 0.0,
             v: 0.0,
@@ -112,7 +112,7 @@ impl Material {
         r0 *= r0;
         return r0 + (1.0 - r0) * (1.0 - cosin).powi(5);
     }
-    fn scatter_lambertian(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray) -> bool {
+    fn scatter_lambertian(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray, atlas: &Arc<Mutex<ImageTextureAtlas>>) -> bool {
         let mut scatter_dir = rec.normal + random_unit_vec3();
 
         if scatter_dir.near_zero() {
@@ -120,7 +120,7 @@ impl Material {
         }
 
         scattered.reset(rec.point, scatter_dir, r_in.time);
-        attenuation.set_to(self.albedo.as_ref().unwrap().get_color(rec.u, rec.v, rec.point));
+        attenuation.set_to(self.albedo.as_ref().unwrap().get_color(rec.u, rec.v, rec.point, atlas));
         return true;
     }
     fn scatter_glossy(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray) -> bool {
@@ -150,31 +150,31 @@ impl Material {
         scattered.reset(rec.point, dir, r_in.time);
         return true;
     }
-    fn scatter_isotropic(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray) -> bool {
+    fn scatter_isotropic(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray, atlas: &Arc<Mutex<ImageTextureAtlas>>) -> bool {
         scattered.reset(rec.point, random_in_unit_sphere(), r_in.time);
-        attenuation.set_to(self.albedo.as_ref().unwrap().get_color(rec.u, rec.v, rec.point));
+        attenuation.set_to(self.albedo.as_ref().unwrap().get_color(rec.u, rec.v, rec.point, atlas));
         return true;
     }
     fn scatter_emissive(&self, _r_in: Ray, _attenuation: &mut Rgb, _rec: HitRecord, _scattered: &mut Ray) -> bool {
         return false;
     }
 
-    pub fn scatter(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray) -> bool {
+    pub fn scatter(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray, atlas: &Arc<Mutex<ImageTextureAtlas>>) -> bool {
         match self.mat_type {
-            MaterialType::Lambertian => self.scatter_lambertian(r_in, attenuation, rec, scattered),
+            MaterialType::Lambertian => self.scatter_lambertian(r_in, attenuation, rec, scattered, atlas),
             MaterialType::Glossy => self.scatter_glossy(r_in, attenuation, rec, scattered),
             MaterialType::Dielectric => self.scatter_dielectric(r_in, attenuation, rec, scattered),
-            MaterialType::Isotropic => self.scatter_isotropic(r_in, attenuation, rec, scattered),
+            MaterialType::Isotropic => self.scatter_isotropic(r_in, attenuation, rec, scattered, atlas),
             MaterialType::Emissive => self.scatter_emissive(r_in, attenuation, rec, scattered)
         }
     }
-    pub fn emitted(&self, u: f32, v: f32, point: Point3) -> Rgb {
+    pub fn emitted(&self, u: f32, v: f32, point: Point3, atlas: &Arc<Mutex<ImageTextureAtlas>>) -> Rgb {
         match self.mat_type {
             MaterialType::Lambertian => Rgb::origin(),
             MaterialType::Glossy => Rgb::origin(),
             MaterialType::Dielectric => Rgb::origin(),
             MaterialType::Isotropic => Rgb::origin(),
-            MaterialType::Emissive => self.albedo.as_ref().unwrap().get_color(u, v, point)
+            MaterialType::Emissive => self.albedo.as_ref().unwrap().get_color(u, v, point, atlas)
         }
     }
 }

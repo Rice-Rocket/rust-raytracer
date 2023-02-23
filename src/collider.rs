@@ -1,6 +1,6 @@
 #[path = "aabb.rs"] mod aabb;
 pub use aabb::*;
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use std::cmp::Ordering;
 
 
@@ -45,7 +45,7 @@ pub enum GeometryType {
 #[derive(Clone)]
 pub struct Geometry {
     pub geometry_type: GeometryType,
-    pub material: Arc<Material>,
+    pub material: Material,
     
     pub time_0: Option<f32>,
     pub time_1: Option<f32>,
@@ -88,7 +88,7 @@ impl Default for Geometry {
     fn default() -> Self {
         Self {
             geometry_type: GeometryType::Sphere,
-            material: Arc::new(Material::lambertian(Texture::solid_color(Rgb::origin()))),
+            material: Material::lambertian(Texture::solid_color(Rgb::origin())),
             time_0: None,
             time_1: None,
             center: None,
@@ -125,7 +125,7 @@ impl Geometry {
     pub fn sphere(center: Point3, radius: f32, material: Material) -> Self {
         Self {
             geometry_type: GeometryType::Sphere,
-            material: Arc::new(material),
+            material: material,
             center: Some(center),
             radius: Some(radius),
             ..Self::default()
@@ -134,7 +134,7 @@ impl Geometry {
     pub fn moving_sphere(center0: Point3, center1: Point3, time0: f32, time1: f32, radius: f32, material: Material) -> Self {
         Self {
             geometry_type: GeometryType::MovingSphere,
-            material: Arc::new(material),
+            material: material,
             center: Some(center0),
             center1: Some(center1),
             time_0: Some(time0),
@@ -151,7 +151,7 @@ impl Geometry {
             y0: Some(y0), 
             y1: Some(y1), 
             k: Some(k), 
-            material: Arc::new(material),
+            material: material,
             ..Self::default()
         }
     }
@@ -163,7 +163,7 @@ impl Geometry {
             z0: Some(z0), 
             z1: Some(z1), 
             k: Some(k), 
-            material: Arc::new(material),
+            material: material,
             ..Self::default()
         }
     }
@@ -175,7 +175,7 @@ impl Geometry {
             y0: Some(y0), 
             y1: Some(y1), 
             k: Some(k), 
-            material: Arc::new(material),
+            material: material,
             ..Self::default()
         }
     }
@@ -194,7 +194,7 @@ impl Geometry {
             geometry_type: GeometryType::Cuboid,
             p0: Some(p0),
             p1: Some(p1),
-            material: Arc::new(material),
+            material: material,
             sides: Some(sides),
             ..Self::default()
         }
@@ -204,7 +204,7 @@ impl Geometry {
             geometry_type: GeometryType::ConstantMedium,
             boundary: Some(Box::new(boundary)),
             neg_inv_density: Some(-1.0 / density),
-            material: Arc::new(Material::isotropic(color)),
+            material: Material::isotropic(color),
             ..Self::default()
         }
     }
@@ -648,16 +648,22 @@ impl Geometry {
 #[derive(Clone)]
 pub struct SceneColliders {
     pub objects: Vec<Geometry>,
+    pub atlas: Arc<Mutex<ImageTextureAtlas>>,
 }
 
 impl SceneColliders {
     pub fn new() -> Self {
         Self {
             objects: Vec::new(),
+            atlas: Arc::new(Mutex::new(ImageTextureAtlas::new()))
         }
     }
     pub fn add(&mut self, object: Geometry) {
         self.objects.push(object);
+    }
+    pub fn load_image(&mut self, path: &str) -> Texture {
+        let idx = self.atlas.lock().unwrap().load(path);
+        Texture::image(&self.atlas, idx)
     }
     pub fn intersect(&self, r: Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let mut hit_anything = false;

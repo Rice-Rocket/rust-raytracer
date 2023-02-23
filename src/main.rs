@@ -1,5 +1,4 @@
-use std::sync::Arc;
-use image::{self, ImageBuffer};
+// use std::sync::Arc;
 #[path = "render.rs"] mod render;
 use render::*;
 
@@ -278,8 +277,7 @@ fn earth() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     // Scene
     let mut scene = SceneColliders::new();
 
-    let earth_texture = Texture::load_image("assets/earthmap.jpeg");
-    let earth_surface = Material::lambertian(earth_texture);
+    let earth_surface = Material::lambertian(scene.load_image("assets/earthmap.jpeg"));
     scene.add(Geometry::sphere(Point3::new(0.0, 0.0, 0.0), 2.0, earth_surface));
 
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
@@ -467,15 +465,15 @@ fn final_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     scene.add(Geometry::sphere(Point3::new(0.0, 150.0, 145.0), 50.0, Material::glossy(Rgb::new(0.8, 0.8, 0.9), 1.0)));
 
     let boundary = Geometry::sphere(Point3::new(360.0, 150.0, 145.0), 70.0, Material::dielectric(1.5));
-    // scene.add(boundary.clone());
-    scene.add(Geometry::constant_medium(boundary, 0.01, Rgb::new(0.2, 0.4, 0.9)));
+    scene.add(boundary.clone());
+    scene.add(Geometry::constant_medium(boundary, 0.2, Rgb::new(0.2, 0.4, 0.9)));
     let boundary = Geometry::sphere(Point3::origin(), 5000.0, Material::dielectric(1.5));
     scene.add(Geometry::constant_medium(boundary, 0.0001, Rgb::new(1.0, 1.0, 1.0)));
 
-    // let emat = Material::lambertian(Texture::load_image("assets/earthmap.jpeg"));
-    // scene.add(Geometry::sphere(Point3::new(400.0, 200.0, 400.0), 100.0, emat));
-    let emat = Material::glossy(Rgb::new(0.8, 0.8, 0.8), 0.0);
+    let emat = Material::lambertian(scene.load_image("assets/earthmap.jpeg"));
     scene.add(Geometry::sphere(Point3::new(400.0, 200.0, 400.0), 100.0, emat));
+    // let emat = Material::glossy(Rgb::new(0.8, 0.8, 0.8), 0.0);
+    // scene.add(Geometry::sphere(Point3::new(400.0, 200.0, 400.0), 100.0, emat));
     let pertext = Texture::noise(0.1, 7);
     scene.add(Geometry::sphere(Point3::new(220.0, 280.0, 300.0), 80.0, Material::lambertian(pertext)));
 
@@ -492,7 +490,7 @@ fn final_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
 
 
 fn main() {
-    let (cam, scene, background, aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = earth();
+    let (cam, scene, background, _aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = earth();
     let imgbuf = render_multi(
         scene,
         cam,

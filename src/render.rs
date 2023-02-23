@@ -1,7 +1,7 @@
 use image::{self, ImageBuffer};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::time::SystemTime;
-use std::sync::Mutex;
+use std::sync::{Arc, Mutex};
 use linya::{Bar, Progress};
 use num_cpus;
 use math::round::half_up;
@@ -21,8 +21,8 @@ pub fn ray_color(r: Ray, background: Rgb, scene: &SceneColliders, depth: usize) 
         Some(rec) => {
             let mut scattered = Ray::new(Vec3::origin(), Vec3::origin(), 0.0);
             let mut attenuation = Vec3::origin();
-            let emitted = rec.material.emitted(rec.u, rec.v, rec.point);
-            match rec.material.scatter(r, &mut attenuation, rec.clone(), &mut scattered) {
+            let emitted = rec.material.emitted(rec.u, rec.v, rec.point, &scene.atlas);
+            match rec.material.scatter(r, &mut attenuation, rec.clone(), &mut scattered, &scene.atlas) {
                 true => return emitted + attenuation * ray_color(scattered, background, scene, depth - 1),
                 false => return emitted
             }
