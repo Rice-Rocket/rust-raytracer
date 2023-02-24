@@ -540,7 +540,7 @@ fn final_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
 
 
 fn main() {
-    let (cam, scene, background, _aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = cornell_pedestal();
+    let (cam, scene, background, _aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = cornell_box();
     let imgbuf = render_multi(
         scene,
         cam,

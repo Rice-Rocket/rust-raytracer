@@ -40,70 +40,43 @@ impl HitRecord {
 
 #[derive(Clone)]
 pub enum MaterialType {
-    Lambertian,
-    Glossy,
-    Dielectric,
-    Isotropic,
-    Emissive
+    Lambertian(Texture),
+    Glossy(Rgb, f32),
+    Dielectric(f32),
+    Isotropic(Texture),
+    Emissive(Texture)
 }
 
 
 #[derive(Clone)]
 pub struct Material {
     pub mat_type: MaterialType,
-
-    pub albedo: Option<Texture>,
-
-    pub color: Option<Rgb>,
-    pub fuzz: Option<f32>,
-
-    pub refraction_index: Option<f32>,
 }
 
 impl Material {
     pub fn lambertian(albedo: Texture) -> Self {
         Self {
-            mat_type: MaterialType::Lambertian,
-            albedo: Some(albedo),
-            color: None,
-            fuzz: None,
-            refraction_index: None,
+            mat_type: MaterialType::Lambertian(albedo),
         }
     }
     pub fn glossy(albedo: Rgb, fuzz: f32) -> Self {
         Self {
-            mat_type: MaterialType::Glossy,
-            albedo: None,
-            color: Some(albedo),
-            fuzz: Some(if fuzz < 1.0 {fuzz} else {1.0}),
-            refraction_index: None
+            mat_type: MaterialType::Glossy(albedo, if fuzz < 1.0 {fuzz} else {1.0}),
         }
     }
     pub fn dielectric(refraction_index: f32) -> Self {
         Self {
-            mat_type: MaterialType::Dielectric,
-            albedo: None,
-            color: None,
-            fuzz: None,
-            refraction_index: Some(refraction_index)
+            mat_type: MaterialType::Dielectric(refraction_index),
         }
     }
     pub fn isotropic(color: Rgb) -> Self {
         Self {
-            mat_type: MaterialType::Isotropic,
-            albedo: Some(Texture::solid_color(color)),
-            color: None,
-            fuzz: None,
-            refraction_index: None
+            mat_type: MaterialType::Isotropic(Texture::solid_color(color)),
         }
     }
     pub fn emissive(color: Rgb) -> Self {
         Self {
-            mat_type: MaterialType::Emissive,
-            albedo: Some(Texture::solid_color(color)),
-            color: None,
-            fuzz: None,
-            refraction_index: None
+            mat_type: MaterialType::Emissive(Texture::solid_color(color)),
         }
     }
 
@@ -112,7 +85,7 @@ impl Material {
         r0 *= r0;
         return r0 + (1.0 - r0) * (1.0 - cosin).powi(5);
     }
-    fn scatter_lambertian(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray, atlas: &Arc<Mutex<ImageTextureAtlas>>) -> bool {
+    fn scatter_lambertian(&self, albedo: &Texture, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray, atlas: &Arc<Mutex<ImageTextureAtlas>>) -> bool {
         let mut scatter_dir = rec.normal + random_unit_vec3();
 
         if scatter_dir.near_zero() {
@@ -120,18 +93,18 @@ impl Material {
         }
 
         scattered.reset(rec.point, scatter_dir, r_in.time);
-        attenuation.set_to(self.albedo.as_ref().unwrap().get_color(rec.u, rec.v, rec.point, atlas));
+        attenuation.set_to(albedo.get_color(rec.u, rec.v, rec.point, atlas));
         return true;
     }
-    fn scatter_glossy(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray) -> bool {
+    fn scatter_glossy(&self, color: &Rgb, fuzz: &f32, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray) -> bool {
         let reflected = reflect(r_in.direction.normalize(), rec.normal);
-        scattered.reset(rec.point, reflected + random_in_unit_sphere() * self.fuzz.unwrap(), r_in.time);
-        attenuation.set_to(self.color.unwrap());
+        scattered.reset(rec.point, reflected + random_in_unit_sphere() * *fuzz, r_in.time);
+        attenuation.set_to(*color);
         return scattered.direction.dot(rec.normal) > 0.0;
     }
-    fn scatter_dielectric(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray) -> bool {
+    fn scatter_dielectric(&self, refraction_index: &f32, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray) -> bool {
         attenuation.set_to(Vec3::new(1.0, 1.0, 1.0));
-        let refraction_ratio = if rec.front_face { 1.0 / self.refraction_index.unwrap() } else { self.refraction_index.unwrap() };
+        let refraction_ratio = if rec.front_face { 1.0 / *refraction_index } else { *refraction_index };
 
         let unit_dir = r_in.direction.normalize();
         let cos_theta = (-unit_dir).dot(rec.normal).min(1.0);
@@ -150,9 +123,9 @@ impl Material {
         scattered.reset(rec.point, dir, r_in.time);
         return true;
     }
-    fn scatter_isotropic(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray, atlas: &Arc<Mutex<ImageTextureAtlas>>) -> bool {
+    fn scatter_isotropic(&self, albedo: &Texture, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray, atlas: &Arc<Mutex<ImageTextureAtlas>>) -> bool {
         scattered.reset(rec.point, random_in_unit_sphere(), r_in.time);
-        attenuation.set_to(self.albedo.as_ref().unwrap().get_color(rec.u, rec.v, rec.point, atlas));
+        attenuation.set_to(albedo.get_color(rec.u, rec.v, rec.point, atlas));
         return true;
     }
     fn scatter_emissive(&self, _r_in: Ray, _attenuation: &mut Rgb, _rec: HitRecord, _scattered: &mut Ray) -> bool {
@@ -160,21 +133,21 @@ impl Material {
     }
 
     pub fn scatter(&self, r_in: Ray, attenuation: &mut Rgb, rec: HitRecord, scattered: &mut Ray, atlas: &Arc<Mutex<ImageTextureAtlas>>) -> bool {
-        match self.mat_type {
-            MaterialType::Lambertian => self.scatter_lambertian(r_in, attenuation, rec, scattered, atlas),
-            MaterialType::Glossy => self.scatter_glossy(r_in, attenuation, rec, scattered),
-            MaterialType::Dielectric => self.scatter_dielectric(r_in, attenuation, rec, scattered),
-            MaterialType::Isotropic => self.scatter_isotropic(r_in, attenuation, rec, scattered, atlas),
-            MaterialType::Emissive => self.scatter_emissive(r_in, attenuation, rec, scattered)
+        match &self.mat_type {
+            MaterialType::Lambertian(albedo) => self.scatter_lambertian(albedo, r_in, attenuation, rec, scattered, atlas),
+            MaterialType::Glossy(color, fuzz) => self.scatter_glossy(color, fuzz, r_in, attenuation, rec, scattered),
+            MaterialType::Dielectric(refraction_index) => self.scatter_dielectric(refraction_index, r_in, attenuation, rec, scattered),
+            MaterialType::Isotropic(albedo) => self.scatter_isotropic(albedo, r_in, attenuation, rec, scattered, atlas),
+            MaterialType::Emissive(_albedo) => self.scatter_emissive(r_in, attenuation, rec, scattered)
         }
     }
     pub fn emitted(&self, u: f32, v: f32, point: Point3, atlas: &Arc<Mutex<ImageTextureAtlas>>) -> Rgb {
-        match self.mat_type {
-            MaterialType::Lambertian => Rgb::origin(),
-            MaterialType::Glossy => Rgb::origin(),
-            MaterialType::Dielectric => Rgb::origin(),
-            MaterialType::Isotropic => Rgb::origin(),
-            MaterialType::Emissive => self.albedo.as_ref().unwrap().get_color(u, v, point, atlas)
+        match &self.mat_type {
+            MaterialType::Lambertian(_albedo) => Rgb::origin(),
+            MaterialType::Glossy(_color, _fuzz) => Rgb::origin(),
+            MaterialType::Dielectric(_refraction_index) => Rgb::origin(),
+            MaterialType::Isotropic(_albedo) => Rgb::origin(),
+            MaterialType::Emissive(albedo) => albedo.get_color(u, v, point, atlas)
         }
     }
 }
