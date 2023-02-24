@@ -1,5 +1,7 @@
 #[path = "aabb.rs"] mod aabb;
 pub use aabb::*;
+use std::fs::File;
+use std::io::{BufReader, BufRead};
 use std::sync::{Arc, Mutex};
 use std::cmp::Ordering;
 
@@ -39,7 +41,8 @@ pub enum GeometryType {
     ConstantMedium,
     TranslateInstance,
     YRotationInstance,
-    BVHNode
+    BVHNode,
+    Triangle,
 }
 
 #[derive(Clone)]
@@ -64,6 +67,7 @@ pub struct Geometry {
 
     pub p0: Option<Point3>,
     pub p1: Option<Point3>,
+    pub p2: Option<Point3>,
     pub sides: Option<SceneColliders>,
 
     pub boundary: Option<Box<Geometry>>,
@@ -77,11 +81,14 @@ pub struct Geometry {
     pub instance_geometry: Option<Box<Geometry>>,
     pub trans_displacement: Option<Vec3>,
 
-    pub y_rot_angle: Option<f32>,
-    pub y_rot_sin_theta: Option<f32>,
-    pub y_rot_cos_theta: Option<f32>,
-    pub y_rot_has_box: Option<bool>,
-    pub y_rot_bbox: Option<AABB>
+    pub rot_axis: Option<Axis>,
+    pub rot_angle: Option<f32>,
+    pub rot_sin_theta: Option<f32>,
+    pub rot_cos_theta: Option<f32>,
+    pub rot_has_box: Option<bool>,
+    pub rot_bbox: Option<AABB>,
+
+    pub plane_normal: Option<Vec3>,
 }
 
 impl Default for Geometry {
@@ -103,6 +110,7 @@ impl Default for Geometry {
             k: None,
             p0: None,
             p1: None,
+            p2: None,
             sides: None,
             boundary: None,
             neg_inv_density: None,
@@ -112,11 +120,13 @@ impl Default for Geometry {
             node_axis: None,
             instance_geometry: None,
             trans_displacement: None,
-            y_rot_angle: None,
-            y_rot_sin_theta: None,
-            y_rot_cos_theta: None,
-            y_rot_has_box: None,
-            y_rot_bbox: None
+            rot_axis: None,
+            rot_angle: None,
+            rot_sin_theta: None,
+            rot_cos_theta: None,
+            rot_has_box: None,
+            rot_bbox: None,
+            plane_normal: None,
         }
     }
 }
@@ -216,7 +226,7 @@ impl Geometry {
             ..Default::default()
         }
     }
-    pub fn instance_y_rotation(geometry: Geometry, angle: f32) -> Self {
+    pub fn instance_rotation(geometry: Geometry, axis: Axis, angle: f32) -> Self {
         let radians = to_radians(angle);
         let sin_theta = radians.sin();
         let cos_theta = radians.cos();
@@ -243,10 +253,25 @@ impl Geometry {
                     let y = j as f32 * bbox.maximum.y + (1 - j) as f32 * bbox.minimum.y;
                     let z = k as f32 * bbox.maximum.z + (1 - k) as f32 * bbox.minimum.z;
 
-                    let newx = cos_theta * x + sin_theta * z;
-                    let newz = -sin_theta * x + cos_theta * z;
+                    let tester;
+                    match axis {
+                        Axis::Y => {
+                            let newx = cos_theta * x + sin_theta * z;
+                            let newz = -sin_theta * x + cos_theta * z;
+                            tester = Vec3::new(newx, y, newz);
+                        },
+                        Axis::X => {
+                            let newy = cos_theta * y + sin_theta * z;
+                            let newz = -sin_theta * y + cos_theta * z;
+                            tester = Vec3::new(x, newy, newz);
+                        },
+                        Axis::Z => {
+                            let newx = cos_theta * x + sin_theta * y;
+                            let newy = -sin_theta * x + cos_theta * y;
+                            tester = Vec3::new(newx, newy, z);
+                        }
+                    }
 
-                    let tester = Vec3::new(newx, y, newz);
                     for c in 0..3 {
                         min[c] = min[c].min(tester[c]);
                         max[c] = max[c].max(tester[c]);
@@ -258,11 +283,13 @@ impl Geometry {
         Self {
             geometry_type: GeometryType::YRotationInstance,
             instance_geometry: Some(Box::new(geometry)),
-            y_rot_angle: Some(angle),
-            y_rot_sin_theta: Some(sin_theta),
-            y_rot_cos_theta: Some(cos_theta),
-            y_rot_has_box: Some(has_box),
-            y_rot_bbox: Some(AABB::new(min, max)),
+
+            rot_axis: Some(axis),
+            rot_angle: Some(angle),
+            rot_sin_theta: Some(sin_theta),
+            rot_cos_theta: Some(cos_theta),
+            rot_has_box: Some(has_box),
+            rot_bbox: Some(AABB::new(min, max)),
             ..Self::default()
         }
     }
@@ -309,6 +336,60 @@ impl Geometry {
             node_axis: Some(axis),
             ..Self::default()
         }
+    }
+    pub fn triangle(p0: Point3, p1: Point3, p2: Point3, material: Material) -> Self {
+        let v0v1 = p1 - p0;
+        let v0v2 = p2 - p0;
+        Self {
+            geometry_type: GeometryType::Triangle,
+            material: material,
+            p0: Some(p0),
+            p1: Some(p1),
+            p2: Some(p2),
+            plane_normal: Some(v0v1.cross(v0v2).normalize()),
+            ..Self::default()
+        }
+    }
+    pub fn load_obj(path: &str, scale: f32, material: Material) -> Self {
+        let mut vertices = Vec::new();
+        let mut triangles: Vec<(usize, usize, usize)> = Vec::new();
+
+        let file = File::open(path).unwrap();
+        for line in BufReader::new(file).lines() {
+            let res_line = line.unwrap();
+            let mut splitted = res_line.split_whitespace();
+            
+            let action_option = splitted.next();
+            let action;
+            match action_option {
+                Some(val) => action = val,
+                None => continue
+            }
+
+            if action.starts_with("vt"){
+            }
+            else if action.starts_with("v") {
+                vertices.push(Vec3::new(splitted.next().unwrap().parse::<f32>().unwrap() * scale, splitted.next().unwrap().parse::<f32>().unwrap() * scale, splitted.next().unwrap().parse::<f32>().unwrap() * scale))
+            }
+            else if action.starts_with("f") {
+                if splitted.clone().next().unwrap().split("/").count() == 1 {
+                    triangles.push((splitted.next().unwrap().parse().unwrap(), splitted.next().unwrap().parse().unwrap(), splitted.next().unwrap().parse().unwrap()))
+                }
+                else {
+                    let mut p1 = splitted.next().unwrap().split("/");
+                    let mut p2 = splitted.next().unwrap().split("/");
+                    let mut p3 = splitted.next().unwrap().split("/");
+                    triangles.push((p1.nth(0).unwrap().parse().unwrap(), p2.nth(0).unwrap().parse().unwrap(), p3.nth(0).unwrap().parse().unwrap()))
+                }
+            }
+        };
+
+        let mut tris = Vec::new();
+        for t in triangles.iter() {
+            tris.push(Geometry::triangle(vertices[t.0 - 1], vertices[t.1 - 1], vertices[t.2 - 1], material.clone()));
+        };
+
+        Geometry::bvh_node(&tris, 0., 1., 0, tris.len())
     }
 
     fn moving_sphere_center(&self, time: f32) -> Point3 {
@@ -525,28 +606,29 @@ impl Geometry {
         }
     }
 
-    fn intersect_y_rot_instance(&self, r: Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+    fn intersect_rot_instance(&self, r: Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let mut origin = r.origin.clone();
         let mut dir = r.direction.clone();
+        let others = self.rot_axis?.others();
 
-        origin.x = self.y_rot_cos_theta.unwrap() * r.origin.x - self.y_rot_sin_theta.unwrap() * r.origin.z;
-        origin.z = self.y_rot_sin_theta.unwrap() * r.origin.x + self.y_rot_cos_theta.unwrap() * r.origin.z;
+        origin[others.0] = self.rot_cos_theta? * r.origin[others.0] - self.rot_sin_theta? * r.origin[others.1];
+        origin[others.1] = self.rot_sin_theta? * r.origin[others.0] + self.rot_cos_theta? * r.origin[others.1];
 
-        dir.x = self.y_rot_cos_theta.unwrap() * r.direction.x - self.y_rot_sin_theta.unwrap() * r.direction.z;
-        dir.z = self.y_rot_sin_theta.unwrap() * r.direction.x + self.y_rot_cos_theta.unwrap() * r.direction.z;
+        dir[others.0] = self.rot_cos_theta? * r.direction[others.0] - self.rot_sin_theta? * r.direction[others.1];
+        dir[others.1] = self.rot_sin_theta? * r.direction[others.0] + self.rot_cos_theta? * r.direction[others.1];
 
         let rotated_ray = Ray::new(origin, dir, r.time);
         
-        match self.instance_geometry.as_ref().unwrap().intersect(rotated_ray, t_min, t_max) {
+        match self.instance_geometry.as_ref()?.intersect(rotated_ray, t_min, t_max) {
             Some(mut rec) => {
                 let mut p = rec.point.clone();
                 let mut norm = rec.normal.clone();
             
-                p.x = self.y_rot_cos_theta.unwrap() * rec.point.x + self.y_rot_sin_theta.unwrap() * rec.point.z;
-                p.z = -self.y_rot_sin_theta.unwrap() * rec.point.x + self.y_rot_cos_theta.unwrap() * rec.point.z;
+                p[others.0] = self.rot_cos_theta? * rec.point[others.0] + self.rot_sin_theta? * rec.point[others.1];
+                p[others.1] = -self.rot_sin_theta? * rec.point[others.0] + self.rot_cos_theta? * rec.point[others.1];
 
-                norm.x = self.y_rot_cos_theta.unwrap() * rec.normal.x + self.y_rot_sin_theta.unwrap() * rec.normal.z;
-                norm.z = -self.y_rot_sin_theta.unwrap() * rec.normal.x + self.y_rot_cos_theta.unwrap() * rec.normal.z;
+                norm[others.0] = self.rot_cos_theta? * rec.normal[others.0] + self.rot_sin_theta? * rec.normal[others.1];
+                norm[others.1] = -self.rot_sin_theta? * rec.normal[others.0] + self.rot_cos_theta? * rec.normal[others.1];
 
                 rec.point = p;
                 rec.set_face_normal(rotated_ray, norm);
@@ -555,9 +637,9 @@ impl Geometry {
             None => None
         }
     }
-    fn bounding_box_y_rot_instance(&self, _time_0: f32, _time_1: f32) -> Option<AABB> {
-        match self.y_rot_has_box.unwrap() {
-            true => Some(self.y_rot_bbox.as_ref().unwrap().clone()),
+    fn bounding_box_rot_instance(&self, _time_0: f32, _time_1: f32) -> Option<AABB> {
+        match self.rot_has_box.unwrap() {
+            true => Some(self.rot_bbox.as_ref().unwrap().clone()),
             false => None
         }
     }
@@ -612,6 +694,61 @@ impl Geometry {
         return self.node_bounding_box.clone();
     }
 
+    fn intersect_triangle(&self, r: Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+        let n_dot_dir = self.plane_normal?.dot(r.direction);
+        if n_dot_dir.abs() < 0.000001 {
+            return None;
+        }
+
+        let d = -self.plane_normal?.dot(self.p0.unwrap());
+        let dist = -(self.plane_normal?.dot(r.origin) + d) / n_dot_dir;
+
+        if dist < 0.0 {
+            return None;
+        }
+
+        let hit_pos = r.origin + r.direction * dist;
+
+        let edge0 = self.p1? - self.p0?;
+        let vp0 = hit_pos - self.p0?;
+        let plane_perp = edge0.cross(vp0);
+        if self.plane_normal?.dot(plane_perp) < 0.0 {
+            return None;
+        }
+        
+        let edge1 = self.p2? - self.p1?;
+        let vp1 = hit_pos - self.p1?;
+        let plane_perp = edge1.cross(vp1);
+        if self.plane_normal?.dot(plane_perp) < 0.0 {
+            return None;
+        }
+        
+        let edge2 = self.p0? - self.p2?;
+        let vp2 = hit_pos - self.p2?;
+        let plane_perp = edge2.cross(vp2);
+        if self.plane_normal?.dot(plane_perp) < 0.0 {
+            return None;
+        }
+
+        let mut rec = HitRecord::new(hit_pos, dist);
+        rec.set_face_normal(r, self.plane_normal?);
+        rec.material = self.material.clone();
+        return Some(rec);
+    }
+    fn bounding_box_triangle(&self, time_0: f32, time_1: f32) -> Option<AABB> {
+        let maxp = Point3::new(
+            self.p0?.x.max(self.p1?.x.max(self.p2?.x)),
+            self.p0?.y.max(self.p1?.y.max(self.p2?.y)),
+            self.p0?.z.max(self.p1?.z.max(self.p2?.z)),
+        );
+        let minp = Point3::new(
+            self.p0?.x.min(self.p1?.x.min(self.p2?.x)),
+            self.p0?.y.min(self.p1?.y.min(self.p2?.y)),
+            self.p0?.z.min(self.p1?.z.min(self.p2?.z)),
+        );
+        return Some(AABB::new(minp, maxp));
+    }
+
     pub fn intersect(&self, r: Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         match self.geometry_type {
             GeometryType::Sphere => self.intersect_sphere(r, t_min, t_max),
@@ -622,8 +759,9 @@ impl Geometry {
             GeometryType::Cuboid => self.intersect_cuboid(r, t_min, t_max),
             GeometryType::ConstantMedium => self.intersect_constant_medium(r, t_min, t_max),
             GeometryType::TranslateInstance => self.intersect_translate_instance(r, t_min, t_max),
-            GeometryType::YRotationInstance => self.intersect_y_rot_instance(r, t_min, t_max),
-            GeometryType::BVHNode => self.intersect_bvh(r, t_min, t_max)
+            GeometryType::YRotationInstance => self.intersect_rot_instance(r, t_min, t_max),
+            GeometryType::BVHNode => self.intersect_bvh(r, t_min, t_max),
+            GeometryType::Triangle => self.intersect_triangle(r, t_min, t_max)
         }
     }
     pub fn bounding_box(&self, time_0: f32, time_1: f32) -> Option<AABB> {
@@ -636,8 +774,9 @@ impl Geometry {
             GeometryType::Cuboid => self.bounding_box_cuboid(time_0, time_1),
             GeometryType::ConstantMedium => self.bounding_box_constant_medium(time_0, time_1),
             GeometryType::TranslateInstance => self.bounding_box_translate_instance(time_0, time_1),
-            GeometryType::YRotationInstance => self.bounding_box_y_rot_instance(time_0, time_1),
-            GeometryType::BVHNode => self.bounding_box_bvh(time_0, time_1)
+            GeometryType::YRotationInstance => self.bounding_box_rot_instance(time_0, time_1),
+            GeometryType::BVHNode => self.bounding_box_bvh(time_0, time_1),
+            GeometryType::Triangle => self.bounding_box_triangle(time_0, time_1),
         }
     }
 }

@@ -361,8 +361,8 @@ fn cornell_box() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     scene.add(Geometry::xzrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
     scene.add(Geometry::xyrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
 
-    scene.add(Geometry::instance_translation(Geometry::instance_y_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 330.0, 165.0), white.clone()), 15.0), Vec3::new(265.0, 0.0, 295.0)));
-    scene.add(Geometry::instance_translation(Geometry::instance_y_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 165.0, 165.0), white.clone()), -18.0), Vec3::new(130.0, 0.0, 65.0)));
+    scene.add(Geometry::instance_translation(Geometry::instance_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 330.0, 165.0), white.clone()), Axis::Y, 15.0), Vec3::new(265.0, 0.0, 295.0)));
+    scene.add(Geometry::instance_translation(Geometry::instance_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 165.0, 165.0), white.clone()), Axis::Y, -18.0), Vec3::new(130.0, 0.0, 65.0)));
 
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
@@ -406,8 +406,58 @@ fn cornell_smoke() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize)
     scene.add(Geometry::xzrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
     scene.add(Geometry::xyrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
 
-    scene.add(Geometry::constant_medium(Geometry::instance_translation(Geometry::instance_y_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 330.0, 165.0), white.clone()), 15.0), Vec3::new(265.0, 0.0, 295.0)), 0.01, Rgb::new(0.0, 0.0, 0.0)));
-    scene.add(Geometry::constant_medium(Geometry::instance_translation(Geometry::instance_y_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 165.0, 165.0), white.clone()), -18.0), Vec3::new(130.0, 0.0, 65.0)), 0.01, Rgb::new(1.0, 1.0, 1.0)));
+    scene.add(Geometry::constant_medium(Geometry::instance_translation(Geometry::instance_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 330.0, 165.0), white.clone()), Axis::Y, 15.0), Vec3::new(265.0, 0.0, 295.0)), 0.01, Rgb::new(0.0, 0.0, 0.0)));
+    scene.add(Geometry::constant_medium(Geometry::instance_translation(Geometry::instance_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 165.0, 165.0), white.clone()), Axis::Y, -18.0), Vec3::new(130.0, 0.0, 65.0)), 0.01, Rgb::new(1.0, 1.0, 1.0)));
+
+    return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
+}
+
+fn cornell_pedestal() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
+    // Image
+    let aspect_ratio = 1.0;
+    let image_width = 600;
+    let image_height = (image_width as f32 / aspect_ratio) as u32;
+    let samples_per_pixel = 200;
+    let max_depth = 100;
+    let background = Rgb::new(0.0, 0.0, 0.0);
+
+    // Camera
+    let look_from = Point3::new(278.0, 278.0, -800.0);
+    let look_at = Point3::new(278.0, 278.0, 0.0);
+
+    let cam = Camera::new(
+        look_from, 
+        look_at,
+        Vec3::new(0.0, 1.0, 0.0),
+        40.0, 
+        0.0,
+        10.0,
+        aspect_ratio,
+        0.0, 1.0
+    );
+
+    // Scene
+    let mut scene = SceneColliders::new();
+
+    let red = Material::lambertian(Texture::solid_color(Rgb::new(0.65, 0.05, 0.05)));
+    let white = Material::lambertian(Texture::solid_color(Rgb::new(0.73, 0.73, 0.73)));
+    let green = Material::lambertian(Texture::solid_color(Rgb::new(0.12, 0.45, 0.15)));
+    let light = Material::emissive(Rgb::new(5.0, 5.0, 5.0));
+    let light_powerful = Material::emissive(Rgb::new(60.0, 60.0, 60.0));
+
+    scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 555.0, green));
+    scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 0.0, red));
+    scene.add(Geometry::xzrect(113.0, 443.0, 127.0, 432.0, 554.0, light.clone()));
+    scene.add(Geometry::xzrect(0.0, 555.0, 0.0, 555.0, 0.0, white.clone()));
+    scene.add(Geometry::xzrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
+    scene.add(Geometry::xyrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
+
+    scene.add(Geometry::xyrect(113.0, 443.0, 127.0, 432.0, -850.0, light_powerful.clone()));
+
+    scene.add(Geometry::instance_translation(Geometry::instance_rotation(Geometry::cuboid(Point3::new(0., 0., 0.), Point3::new(125., 125., 125.), white.clone()), Axis::Y, 45.0), Vec3::new(188., 0., 178.)));
+    
+    // scene.add(Geometry::triangle(Point3::new(200., 100., 400.), Point3::new(100., 100., 200.), Point3::new(100., 200., 400.), white.clone()));
+    scene.add(Geometry::instance_translation(Geometry::instance_rotation(Geometry::instance_rotation(Geometry::load_obj("assets/objs/suzanne.obj", 80.0, white.clone()), Axis::Y, 145.), Axis::Z, -30.), Vec3::new(270., 200., 178.)));
 
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
@@ -483,14 +533,14 @@ fn final_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     for _ in 0..ns {
         spheres.push(Geometry::sphere(Point3::randrange(0.0, 165.0), 10.0, white.clone()));
     }
-    scene.add(Geometry::instance_translation(Geometry::instance_y_rotation(Geometry::bvh_node(&spheres, 0.0, 1.0, 0, spheres.len()), 15.0), Vec3::new(-100.0, 270.0, 395.0)));
+    scene.add(Geometry::instance_translation(Geometry::instance_rotation(Geometry::bvh_node(&spheres, 0.0, 1.0, 0, spheres.len()), Axis::Y, 15.0), Vec3::new(-100.0, 270.0, 395.0)));
 
     return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
 
 
 fn main() {
-    let (cam, scene, background, _aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = cornell_box();
+    let (cam, scene, background, _aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = cornell_pedestal();
     let imgbuf = render_multi(
         scene,
         cam,
