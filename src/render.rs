@@ -1,13 +1,14 @@
 use image::{self, ImageBuffer};
 use indicatif::{ProgressBar, ProgressStyle};
 use std::time::SystemTime;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 use linya::{Bar, Progress};
 use num_cpus;
 use math::round::half_up;
 #[path = "camera.rs"] mod camera;
 pub use camera::*;
 use rayon::prelude::*;
+
 
 
 
@@ -22,8 +23,9 @@ pub fn ray_color(r: Ray, background: Rgb, scene: &SceneColliders, depth: usize) 
             let mut scattered = Ray::new(Vec3::origin(), Vec3::origin(), 0.0);
             let mut attenuation = Vec3::origin();
             let emitted = rec.material.emitted(rec.u, rec.v, rec.point, &scene.atlas);
-            match rec.material.scatter(r, &mut attenuation, rec.clone(), &mut scattered, &scene.atlas) {
-                true => return emitted + attenuation * ray_color(scattered, background, scene, depth - 1),
+            let mut pdf: f32 = 0.0;
+            match rec.material.scatter(r, &mut attenuation, rec.clone(), &mut scattered, &mut pdf, &scene.atlas) {
+                true => return emitted + attenuation * rec.material.scattering_pdf(r, rec.clone(), &mut scattered) * ray_color(scattered, background, scene, depth - 1) / pdf,
                 false => return emitted
             }
         },
@@ -99,11 +101,11 @@ pub fn render_worker(background: Rgb, img_width: u32, img_height: u32, samples_p
             g = (scale * g).sqrt();
             b = (scale * b).sqrt();
             
-            let ir = 256.0 * clamp(r, 0.0, 0.999);
-            let ig = 256.0 * clamp(g, 0.0, 0.999);
-            let ib = 256.0 * clamp(b, 0.0, 0.999);
+            let ir = 256.0 * clamp(r / n_threads as f32, 0.0, 0.999);
+            let ig = 256.0 * clamp(g / n_threads as f32, 0.0, 0.999);
+            let ib = 256.0 * clamp(b / n_threads as f32, 0.0, 0.999);
 
-            subimage.put_pixel(i, img_height - j - 1, image::Rgb([ir / (n_threads - 1) as f32, ig / (n_threads - 1) as f32, ib / (n_threads - 1) as f32]));
+            subimage.put_pixel(i, img_height - j - 1, image::Rgb([ir, ig, ib]));
         }
         progress.lock().unwrap().inc_and_draw(bar, 1);
     }
@@ -118,7 +120,7 @@ pub fn render_multi(scene: SceneColliders, cam: Camera, background: Rgb, max_dep
     let global_buf: Mutex<ImageBuffer<image::Rgb<f32>, Vec<f32>>> = Mutex::new(ImageBuffer::new(img_width, img_height));
     let time_start = SystemTime::now();
     let progress = Mutex::new(Progress::new());
-
+    
     (0..n_threads).into_par_iter().for_each(|i| {
         let bar = progress.lock().unwrap().bar(img_height as usize, format!("Rendering [Thread {}]", i + 1));
         let subimage = render_worker(
@@ -136,17 +138,17 @@ pub fn render_multi(scene: SceneColliders, cam: Camera, background: Rgb, max_dep
             }
         }
     });
-
+    
     let imgbuf_f32 = global_buf.lock().unwrap().clone();
     let mut finalbuf = ImageBuffer::new(img_width, img_height);
-
+    
     for (x, y, pixel) in finalbuf.enumerate_pixels_mut() {
         let pix = imgbuf_f32.get_pixel(x, y);
         *pixel = image::Rgb([pix.0[0] as u8, pix.0[1] as u8, pix.0[2] as u8]);
     }
-
+    
     let render_time = SystemTime::now().duration_since(time_start).unwrap().as_secs();
     println!("\nRendered in {}s ({}m)", render_time, half_up(render_time as f64 / 60.0, 2));
-
+    
     return finalbuf;
 }

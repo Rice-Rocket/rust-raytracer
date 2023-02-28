@@ -226,6 +226,17 @@ pub fn random_in_unit_disk() -> Vec3 {
     }
 }
 
+pub fn random_cosin_direction() -> Vec3 {
+    let r1 = random();
+    let r2 = random();
+    let z = (1.0 - r2).sqrt();
+
+    let phi = TAU * r1;
+    let x = phi.cos() * r2.sqrt();
+    let y = phi.sin() * r2.sqrt();
+    Vec3::new(x, y, z)
+}
+
 pub fn reflect(v: Vec3, n: Vec3) -> Vec3 {
     v - n * 2.0 * v.dot(n)
 }

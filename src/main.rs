@@ -1,7 +1,6 @@
-// use std::sync::Arc;
 #[path = "render.rs"] mod render;
 use render::*;
-
+use macroquad::prelude::{next_frame, clear_background, BLACK, Image, Texture2D, draw_texture_ex, WHITE, DrawTextureParams, Vec2, screen_width, screen_height, Color};
 
 const FILENAME: &str = "out.png";
 
@@ -327,7 +326,7 @@ fn cornell_box() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     let aspect_ratio = 1.0;
     let image_width = 600;
     let image_height = (image_width as f32 / aspect_ratio) as u32;
-    let samples_per_pixel = 200;
+    let samples_per_pixel = 1000;
     let max_depth = 200;
     let background = Rgb::new(0.0, 0.0, 0.0);
 
@@ -352,7 +351,7 @@ fn cornell_box() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     let red = Material::lambertian(Texture::solid_color(Rgb::new(0.65, 0.05, 0.05)));
     let white = Material::lambertian(Texture::solid_color(Rgb::new(0.73, 0.73, 0.73)));
     let green = Material::lambertian(Texture::solid_color(Rgb::new(0.12, 0.45, 0.15)));
-    let light = Material::emissive(Rgb::new(30.0, 30.0, 30.0));
+    let light = Material::emissive(Rgb::new(20.0, 20.0, 20.0));
 
     scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 555.0, green));
     scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 0.0, red));
@@ -442,8 +441,7 @@ fn cornell_pedestal() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usi
     let red = Material::lambertian(Texture::solid_color(Rgb::new(0.65, 0.05, 0.05)));
     let white = Material::lambertian(Texture::solid_color(Rgb::new(0.73, 0.73, 0.73)));
     let green = Material::lambertian(Texture::solid_color(Rgb::new(0.12, 0.45, 0.15)));
-    let light = Material::emissive(Rgb::new(5.0, 5.0, 5.0));
-    let light_powerful = Material::emissive(Rgb::new(60.0, 60.0, 60.0));
+    let light = Material::emissive(Rgb::new(2.0, 2.0, 2.0));
 
     scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 555.0, green));
     scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 0.0, red));
@@ -452,7 +450,7 @@ fn cornell_pedestal() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usi
     scene.add(Geometry::xzrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
     scene.add(Geometry::xyrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
 
-    scene.add(Geometry::xyrect(113.0, 443.0, 127.0, 432.0, -850.0, light_powerful.clone()));
+    // scene.add(Geometry::xyrect(113.0, 443.0, 127.0, 432.0, -850.0, light_powerful.clone()));
 
     scene.add(Geometry::instance_translation(Geometry::instance_rotation(Geometry::cuboid(Point3::new(0., 0., 0.), Point3::new(125., 125., 125.), white.clone()), Axis::Y, 45.0), Vec3::new(188., 0., 178.)));
     
@@ -508,7 +506,7 @@ fn final_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     }
     scene.add(Geometry::bvh_node(&boxes, 0.0, 1.0, 0, boxes.len()));
     
-    let light = Material::emissive(Rgb::new(10.0, 10.0, 10.0));
+    let light = Material::emissive(Rgb::new(7.0, 7.0, 7.0));
     scene.add(Geometry::xzrect(123.0, 423.0, 147.0, 412.0, 554.0, light.clone()));
 
     scene.add(Geometry::sphere(Point3::new(260.0, 150.0, 45.0), 50.0, Material::dielectric(1.5)));
@@ -539,6 +537,8 @@ fn final_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
 }
 
 
+
+
 fn main() {
     let (cam, scene, background, _aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = cornell_box();
     let imgbuf = render_multi(
@@ -553,3 +553,4 @@ fn main() {
 
     imgbuf.save(&format!("output/{}", FILENAME)).unwrap();
 }
+
