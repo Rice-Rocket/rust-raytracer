@@ -559,7 +559,7 @@ fn final_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
 async fn main() {
     let (cam, scene, background, aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = cornell_box();
 
-    let mut img = Image::gen_image_color(img_width as u16, img_height as u16, BLACK);
+    let mut img = Image::gen_image_color(img_width as u16, img_height as u16, Color::new(0., 0., 0., 1.));
     let mut img_full = Vec::new();
     for _ in 0..img_width {
         let mut col = Vec::new();

@@ -99,11 +99,11 @@ pub fn render_worker(background: Rgb, img_width: u32, img_height: u32, samples_p
             g = (scale * g).sqrt();
             b = (scale * b).sqrt();
             
-            let ir = 256.0 * clamp(r, 0.0, 0.999);
-            let ig = 256.0 * clamp(g, 0.0, 0.999);
-            let ib = 256.0 * clamp(b, 0.0, 0.999);
+            let ir = 256.0 * clamp(r / n_threads as f32, 0.0, 0.999);
+            let ig = 256.0 * clamp(g / n_threads as f32, 0.0, 0.999);
+            let ib = 256.0 * clamp(b / n_threads as f32, 0.0, 0.999);
 
-            subimage.put_pixel(i, img_height - j - 1, image::Rgb([ir / (n_threads - 1) as f32, ig / (n_threads - 1) as f32, ib / (n_threads - 1) as f32]));
+            subimage.put_pixel(i, img_height - j - 1, image::Rgb([ir, ig, ib]));
         }
         progress.lock().unwrap().inc_and_draw(bar, 1);
     }
@@ -176,11 +176,11 @@ pub fn render_frame_worker(background: Rgb, img_width: u32, img_height: u32, sam
             g = (scale * g).sqrt();
             b = (scale * b).sqrt();
             
-            let ir = clamp(r, 0.0, 0.999);
-            let ig = clamp(g, 0.0, 0.999);
-            let ib = clamp(b, 0.0, 0.999);
+            let ir = clamp(r / n_threads as f32, 0.0, 0.999);
+            let ig = clamp(g / n_threads as f32, 0.0, 0.999);
+            let ib = clamp(b / n_threads as f32, 0.0, 0.999);
 
-            subimage.put_pixel(i, img_height - j - 1, image::Rgb([ir / n_threads as f32, ig / n_threads as f32, ib / n_threads as f32]));
+            subimage.put_pixel(i, img_height - j - 1, image::Rgb([ir, ig, ib]));
         }
     }
     return subimage;
