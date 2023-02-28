@@ -1,6 +1,6 @@
-// use std::sync::Arc;
 #[path = "render.rs"] mod render;
 use render::*;
+use macroquad::prelude::{Image, Texture2D, screen_width, screen_height, Vec2, Color, draw_texture_ex, DrawTextureParams, next_frame};
 
 
 const FILENAME: &str = "out.png";
@@ -539,17 +539,76 @@ fn final_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
 }
 
 
-fn main() {
-    let (cam, scene, background, _aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = cornell_box();
-    let imgbuf = render_multi(
-        scene,
-        cam,
-        background,
-        max_depth,
-        samples_per_pixel,
-        img_width, 
-        img_height,
-    );
+// fn main() {
+//     let (cam, scene, background, _aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = cornell_box();
+//     let imgbuf = render_multi(
+//         scene,
+//         cam,
+//         background,
+//         max_depth,
+//         samples_per_pixel,
+//         img_width, 
+//         img_height,
+//     );
 
-    imgbuf.save(&format!("output/{}", FILENAME)).unwrap();
+//     imgbuf.save(&format!("output/{}", FILENAME)).unwrap();
+// }
+
+
+#[macroquad::main("Rust Raytracer")]
+async fn main() {
+    let (cam, scene, background, aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = cornell_box();
+
+    let mut img = Image::gen_image_color(img_width as u16, img_height as u16, BLACK);
+    let mut img_full = Vec::new();
+    for _ in 0..img_width {
+        let mut col = Vec::new();
+        for _ in 0..img_height {
+            col.push([0f32; 3]);
+        }
+        img_full.push(col);
+    }
+
+    let mut iterations = 0;
+    let texture = Texture2D::from_image(&img);
+    let samples_per_frame = num_cpus::get() * 1;
+    loop {
+        iterations += 1;
+        // clear_background(BLACK);
+
+        let imgbuf = render_frame_multi(
+            scene.clone(),
+            cam.clone(),
+            background,
+            max_depth,
+            samples_per_frame,
+            img_width, 
+            img_height,
+        );
+        
+        for (x, y, pixel) in imgbuf.enumerate_pixels() {
+            let old_val = img_full[x as usize][y as usize];
+            let r = old_val[0] + pixel.0[0];
+            let g = old_val[1] + pixel.0[1];
+            let b = old_val[2] + pixel.0[2];
+            img_full[x as usize][y as usize] = [r, g, b];
+            img.set_pixel(x, y, Color::new(r / iterations as f32, g / iterations as f32, b / iterations as f32, 1.0));
+        }
+
+        texture.update(&img);
+        let width_min = screen_width() < screen_height();
+        let pos = if width_min {
+            Vec2::new(screen_width(), screen_width() / aspect_ratio)
+        } else {
+            Vec2::new(screen_height() * aspect_ratio, screen_height())
+        };
+        draw_texture_ex(
+            texture,
+            0.0, 0.0,
+            Color::new(1.0, 1.0, 1.0, 1.0), 
+            DrawTextureParams{dest_size: Some(pos), ..Default::default()}
+        );
+        println!("{} samples per pixel", iterations * samples_per_frame);
+        next_frame().await
+    }
 }
