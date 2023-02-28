@@ -150,3 +150,65 @@ pub fn render_multi(scene: SceneColliders, cam: Camera, background: Rgb, max_dep
 
     return finalbuf;
 }
+
+
+
+
+pub fn render_frame_worker(background: Rgb, img_width: u32, img_height: u32, samples_per_thread: usize, thread_cam: &Camera, thread_scene: &SceneColliders, max_depth: usize, n_threads: usize) -> ImageBuffer<image::Rgb<f32>, Vec<f32>> {
+    let mut subimage = ImageBuffer::new(img_width, img_height);
+    for j in (0..img_height).rev() {
+        for i in 0..img_width {
+            let mut pixel_color = Rgb::origin();
+            
+            for _ in 0..samples_per_thread {
+                let u = (i as f32 + random()) / (img_width as f32 - 1.0);
+                let v = (j as f32 + random()) / (img_height as f32 - 1.0);
+                let r = thread_cam.get_ray(u, v);
+                pixel_color = pixel_color + ray_color(r, background, &thread_scene, max_depth);
+            }
+
+            let mut r = pixel_color.x;
+            let mut g = pixel_color.y;
+            let mut b  = pixel_color.z;
+            
+            let scale = 1.0 / samples_per_thread as f32;
+            r = (scale * r).sqrt();
+            g = (scale * g).sqrt();
+            b = (scale * b).sqrt();
+            
+            let ir = clamp(r, 0.0, 0.999);
+            let ig = clamp(g, 0.0, 0.999);
+            let ib = clamp(b, 0.0, 0.999);
+
+            subimage.put_pixel(i, img_height - j - 1, image::Rgb([ir / n_threads as f32, ig / n_threads as f32, ib / n_threads as f32]));
+        }
+    }
+    return subimage;
+}
+
+
+pub fn render_frame_multi(scene: SceneColliders, cam: Camera, background: Rgb, max_depth: usize, samples_per_pixel: usize, img_width: u32, img_height: u32) -> ImageBuffer<image::Rgb<f32>, Vec<f32>> {
+    let n_threads = num_cpus::get();
+    let samples_per_thread = samples_per_pixel / n_threads;
+    let global_buf: Mutex<ImageBuffer<image::Rgb<f32>, Vec<f32>>> = Mutex::new(ImageBuffer::new(img_width, img_height));
+
+    (0..n_threads).into_par_iter().for_each(|i| {
+        let subimage = render_frame_worker(
+            background, img_width, img_height, samples_per_thread, &cam, 
+            &scene, max_depth, n_threads
+        );
+        let mut imgdata = global_buf.lock().unwrap();
+        for j in 0..img_width {
+            for k in 0..img_height {
+                let p = imgdata.get_pixel_mut(j, k);
+                let pix = *subimage.get_pixel(j, k);
+                p.0[0] += pix.0[0];
+                p.0[1] += pix.0[1];
+                p.0[2] += pix.0[2];
+            }
+        }
+    });
+
+    let imgbuf_f32 = global_buf.lock().unwrap().clone();
+    return imgbuf_f32;
+}
