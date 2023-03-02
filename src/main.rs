@@ -326,7 +326,7 @@ fn cornell_box() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     let aspect_ratio = 1.0;
     let image_width = 600;
     let image_height = (image_width as f32 / aspect_ratio) as u32;
-    let samples_per_pixel = 1000;
+    let samples_per_pixel = 500;
     let max_depth = 200;
     let background = Rgb::new(0.0, 0.0, 0.0);
 
@@ -351,7 +351,7 @@ fn cornell_box() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     let red = Material::lambertian(Texture::solid_color(Rgb::new(0.65, 0.05, 0.05)));
     let white = Material::lambertian(Texture::solid_color(Rgb::new(0.73, 0.73, 0.73)));
     let green = Material::lambertian(Texture::solid_color(Rgb::new(0.12, 0.45, 0.15)));
-    let light = Material::emissive(Rgb::new(20.0, 20.0, 20.0));
+    let light = Material::emissive(Rgb::new(25.0, 25.0, 25.0));
 
     scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 555.0, green));
     scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 0.0, red));
@@ -465,7 +465,7 @@ fn final_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     let aspect_ratio = 1.0;
     let image_width = 800;
     let image_height = (image_width as f32 / aspect_ratio) as u32;
-    let samples_per_pixel = 300;
+    let samples_per_pixel = 50;
     let max_depth = 50;
     let background = Rgb::new(0.0, 0.0, 0.0);
 

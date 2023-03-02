@@ -25,7 +25,12 @@ pub fn ray_color(r: Ray, background: Rgb, scene: &SceneColliders, depth: usize) 
             let emitted = rec.material.emitted(rec.u, rec.v, rec.point, &scene.atlas);
             let mut pdf: f32 = 0.0;
             match rec.material.scatter(r, &mut attenuation, rec.clone(), &mut scattered, &mut pdf, &scene.atlas) {
-                true => return emitted + attenuation * rec.material.scattering_pdf(r, rec.clone(), &mut scattered) * ray_color(scattered, background, scene, depth - 1) / pdf,
+                true => {
+                    let p = PDF::cosine_pdf(rec.normal);
+                    scattered.reset(rec.point, p.generate(), r.time);
+                    let pdf_val = p.value(scattered.direction);
+                    return emitted + attenuation * rec.material.scattering_pdf(r, rec.clone(), &mut scattered) * ray_color(scattered, background, scene, depth - 1) / pdf_val
+                },
                 false => return emitted
             }
         },
