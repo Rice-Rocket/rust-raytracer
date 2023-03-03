@@ -42,6 +42,7 @@ pub enum GeometryType {
     TranslateInstance(Box<Geometry>, Vec3),
     YRotationInstance(Box<Geometry>, Axis, f32, f32, f32, bool, AABB),
     BVHNode(Box<Geometry>, Box<Geometry>, Option<AABB>, usize),
+    ColliderList(Vec<Geometry>),
     Triangle(Point3, Point3, Point3, Vec3),
 }
 
@@ -207,6 +208,12 @@ impl Geometry {
         Self {
             material: left.material.clone(),
             geometry_type: GeometryType::BVHNode(Box::new(left), Box::new(right), bounding_box, axis),
+        }
+    }
+    pub fn collider_list(colliders: Vec<Geometry>) -> Self {
+        Self {
+            geometry_type: GeometryType::ColliderList(colliders),
+            material: Material::lambertian(Texture::solid_color(Rgb::origin()))
         }
     }
     pub fn triangle(p0: Point3, p1: Point3, p2: Point3, material: Material) -> Self {
@@ -378,6 +385,21 @@ impl Geometry {
             Point3::new(x0, k - 0.0001, z0),
             Point3::new(x1, k + 0.0001, z1)
         ))
+    }
+    fn pdf_value_xzrect(&self, x0: f32, x1: f32, z0: f32, z1: f32, k: f32, origin: Point3, v: Vec3) -> f32 {
+        match self.intersect_xzrect(x0, x1, z0, z1, k, Ray::new(origin, v, 0.0), 0.001, f32::MAX) {
+            Some(rec) => {
+                let area = (x1 - x0) * (z1 - z0);
+                let dist_sqrd = rec.t * rec.t * v.length_squared();
+                let cosine = (v.dot(rec.normal) / v.length()).abs();
+                return dist_sqrd / (cosine * area);
+            },
+            None => 0.0
+        }
+    }
+    fn random_xzrect(&self, x0: f32, x1: f32, z0: f32, z1: f32, k: f32, origin: Point3) -> Vec3 {
+        let rand_point = Point3::new(randrange(x0, x1), k, randrange(z0, z1));
+        rand_point - origin
     }
 
     fn intersect_yzrect(&self, z0: f32, z1: f32, y0: f32, y1: f32, k: f32, r: Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
@@ -561,6 +583,47 @@ impl Geometry {
         return bounding_box.clone();
     }
 
+    fn intersect_collider_list(&self, colliders: &Vec<Geometry>, r: Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+        let mut hit_anything = false;
+        let mut closest = t_max;
+        let mut hit_rec = HitRecord::new(Point3::origin(), 0.0);
+        
+        for obj in colliders.iter() {
+            let hit = obj.intersect(r, t_min, closest);
+            match hit {
+                Some(rec) => {
+                    hit_anything = true;
+                    closest = rec.t;
+                    hit_rec = rec;
+                },
+                None => {}
+            }
+        };
+
+        return match hit_anything {
+            true => Some(hit_rec),
+            false => None
+        };
+    }
+    fn bounding_box_collider_list(&self, colliders: &Vec<Geometry>, time_0: f32, time_1: f32) -> Option<AABB> {
+        if colliders.is_empty() {
+            return None;
+        }
+        let mut temp_box = Some(AABB::empty());
+        let mut first_box = true;
+        let mut out_box = None;
+
+        for obj in colliders.iter() {
+            temp_box = obj.bounding_box(time_0, time_1);
+            if temp_box.is_some() {
+                return None;
+            }
+            out_box = if first_box { temp_box.clone() } else { Some(AABB::surrounding_box(out_box.unwrap().clone(), temp_box.unwrap().clone())) };
+            first_box = false;
+        }
+        return out_box;
+    }
+
     fn intersect_triangle(&self, p0: Point3, p1: Point3, p2: Point3, plane_normal: Vec3, r: Ray, _t_min: f32, _t_max: f32) -> Option<HitRecord> {
         let n_dot_dir = plane_normal.dot(r.direction);
         if n_dot_dir.abs() < 0.000001 {
@@ -628,6 +691,7 @@ impl Geometry {
             GeometryType::TranslateInstance(geometry, displacement) => self.intersect_translate_instance(geometry, displacement, r, t_min, t_max),
             GeometryType::YRotationInstance(geometry, axis, angle, sin_theta, cos_theta, has_box, aabb) => self.intersect_rot_instance(geometry, axis, *sin_theta, *cos_theta, r, t_min, t_max),
             GeometryType::BVHNode(left, right, bounding_box, axis) => self.intersect_bvh(left, right, bounding_box, *axis, r, t_min, t_max),
+            GeometryType::ColliderList(colliders) => self.intersect_collider_list(colliders, r, t_min, t_max),
             GeometryType::Triangle(p0, p1, p2, plane_normal) => self.intersect_triangle(*p0, *p1, *p2, *plane_normal, r, t_min, t_max)
         }
     }
@@ -643,7 +707,20 @@ impl Geometry {
             GeometryType::TranslateInstance(geometry, displacement) => self.bounding_box_translate_instance(geometry, displacement, time_0, time_1),
             GeometryType::YRotationInstance(_geometry, _axis, _angle, _sin_theta, _cos_theta, has_box, aabb) => self.bounding_box_rot_instance(*has_box, aabb, time_0, time_1),
             GeometryType::BVHNode(_left, _right, bounding_box, _axis) => self.bounding_box_bvh(bounding_box, time_0, time_1),
+            GeometryType::ColliderList(colliders) => self.bounding_box_collider_list(colliders, time_0, time_1),
             GeometryType::Triangle(p0, p1, p2, _plane_normal) => self.bounding_box_triangle(p0, p1, p2, time_0, time_1),
+        }
+    }
+    pub fn pdf_value(&self, origin: Point3, v: Vec3) -> f32 {
+        match &self.geometry_type {
+            GeometryType::XZRect(x0, x1, z0, z1, k) => self.pdf_value_xzrect(*x0, *x1, *z0, *z1, *k, origin, v),
+            _ => 0.0
+        }
+    }
+    pub fn random(&self, origin: Point3) -> Vec3 {
+        match &self.geometry_type {
+            GeometryType::XZRect(x0, x1, z0, z1, k) => self.random_xzrect(*x0, *x1, *z0, *z1, *k, origin),
+            _ => Vec3::new(1., 0., 0.)
         }
     }
 }

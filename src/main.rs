@@ -5,7 +5,7 @@ use macroquad::prelude::{next_frame, clear_background, BLACK, Image, Texture2D, 
 const FILENAME: &str = "out.png";
 
 
-fn default_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
+fn default_scene() -> (Camera, SceneColliders, Geometry, Rgb, f32, u32, u32, usize, usize) {
     // Image
     let aspect_ratio = 16.0 / 9.0;
     let image_width = 800;
@@ -44,10 +44,10 @@ fn default_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize)
     scene.add(Geometry::sphere(Point3::new(-1.0, 0.0, -1.0), -0.4, mat_left_in));
     scene.add(Geometry::sphere(Point3::new(1.0, 0.0, -1.0), 0.5, mat_right));
 
-    return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
+    return (cam, scene, Geometry::collider_list(Vec::new()), background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
 
-fn random_spheres() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
+fn random_spheres() -> (Camera, SceneColliders, Geometry, Rgb, f32, u32, u32, usize, usize) {
     // Image
     let aspect_ratio = 3.0 / 2.0;
     let image_width = 600;
@@ -111,10 +111,10 @@ fn random_spheres() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize
 
     scene.add(Geometry::bvh_node(&spheres, 0.0, 1.0, 0, spheres.len()));
     
-    return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
+    return (cam, scene, Geometry::collider_list(Vec::new()), background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
 
-fn random_moving_spheres() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
+fn random_moving_spheres() -> (Camera, SceneColliders, Geometry, Rgb, f32, u32, u32, usize, usize) {
     // Image
     let aspect_ratio = 3.0 / 2.0;
     let image_width = 400;
@@ -178,10 +178,10 @@ fn random_moving_spheres() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize
     let mat3 = Material::glossy(Rgb::new(0.7, 0.6, 0.5), 0.1);
     scene.add(Geometry::sphere(Point3::new(4.0, 1.0, 0.0), 1.0, mat3));
     
-    return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
+    return (cam, scene, Geometry::collider_list(Vec::new()), background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
 
-fn two_spheres() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
+fn two_spheres() -> (Camera, SceneColliders, Geometry, Rgb, f32, u32, u32, usize, usize) {
     // Image
     let aspect_ratio = 16.0 / 9.0;
     let image_width = 800;
@@ -212,10 +212,10 @@ fn two_spheres() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     scene.add(Geometry::sphere(Point3::new(0.0, -8.0, 0.0), 8.0, checker.clone()));
     scene.add(Geometry::sphere(Point3::new(0.0, 8.0, 0.0), 8.0, checker.clone()));
 
-    return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
+    return (cam, scene, Geometry::collider_list(Vec::new()), background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
 
-fn two_perlin_spheres() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
+fn two_perlin_spheres() -> (Camera, SceneColliders, Geometry, Rgb, f32, u32, u32, usize, usize) {
     // Image
     let aspect_ratio = 16.0 / 9.0;
     let image_width = 600;
@@ -246,10 +246,10 @@ fn two_perlin_spheres() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, u
     scene.add(Geometry::sphere(Point3::new(0.0, -1000.0, 0.0), 1000.0, pertext.clone()));
     scene.add(Geometry::sphere(Point3::new(0.0, 2.0, 0.0), 2.0, pertext.clone()));
 
-    return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
+    return (cam, scene, Geometry::collider_list(Vec::new()), background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
 
-fn earth() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
+fn earth() -> (Camera, SceneColliders, Geometry, Rgb, f32, u32, u32, usize, usize) {
     // Image
     let aspect_ratio = 16.0 / 9.0;
     let image_width = 800;
@@ -279,10 +279,10 @@ fn earth() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     let earth_surface = Material::lambertian(scene.load_image("assets/earthmap.jpeg"));
     scene.add(Geometry::sphere(Point3::new(0.0, 0.0, 0.0), 2.0, earth_surface));
 
-    return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
+    return (cam, scene, Geometry::collider_list(Vec::new()), background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
 
-fn rect_light() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
+fn rect_light() -> (Camera, SceneColliders, Geometry, Rgb, f32, u32, u32, usize, usize) {
     // Image
     let aspect_ratio = 16.0 / 9.0;
     let image_width = 800;
@@ -314,19 +314,20 @@ fn rect_light() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     scene.add(Geometry::sphere(Point3::new(0.0, -1000.0, 0.0), 1000.0, checker));
     scene.add(Geometry::sphere(Point3::new(0.0, 2.0, 0.0), 2.0, texture));
 
+    let mut lights = Vec::new();
     let difflight = Material::emissive(Rgb::new(5.0, 2.0, 2.0));
-    scene.add(Geometry::xyrect(3.0, 5.0, 1.0, 3.0, -2.0, difflight.clone()));
-    scene.add(Geometry::sphere(Point3::new(0.0, 7.0, 0.0), 1.5, difflight));
-
-    return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
+    lights.push(Geometry::xyrect(3.0, 5.0, 1.0, 3.0, -2.0, difflight.clone()));
+    lights.push(Geometry::sphere(Point3::new(0.0, 7.0, 0.0), 1.5, difflight));
+    
+    return (cam, scene, Geometry::collider_list(lights), background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
 
-fn cornell_box() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
+fn cornell_box() -> (Camera, SceneColliders, Geometry, Rgb, f32, u32, u32, usize, usize) {
     // Image
     let aspect_ratio = 1.0;
     let image_width = 600;
     let image_height = (image_width as f32 / aspect_ratio) as u32;
-    let samples_per_pixel = 500;
+    let samples_per_pixel = 5000;
     let max_depth = 200;
     let background = Rgb::new(0.0, 0.0, 0.0);
 
@@ -355,7 +356,7 @@ fn cornell_box() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
 
     scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 555.0, green));
     scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 0.0, red));
-    scene.add(Geometry::xzrect(213.0, 343.0, 227.0, 332.0, 554.0, light));
+    scene.add(Geometry::xzrect(213.0, 343.0, 227.0, 332.0, 554.0, light.clone()));
     scene.add(Geometry::xzrect(0.0, 555.0, 0.0, 555.0, 0.0, white.clone()));
     scene.add(Geometry::xzrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
     scene.add(Geometry::xyrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
@@ -363,10 +364,10 @@ fn cornell_box() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     scene.add(Geometry::instance_translation(Geometry::instance_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 330.0, 165.0), white.clone()), Axis::Y, 15.0), Vec3::new(265.0, 0.0, 295.0)));
     scene.add(Geometry::instance_translation(Geometry::instance_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 165.0, 165.0), white.clone()), Axis::Y, -18.0), Vec3::new(130.0, 0.0, 65.0)));
 
-    return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
+    return (cam, scene, Geometry::xzrect(213.0, 343.0, 227.0, 332.0, 554.0, white), background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
 
-fn cornell_smoke() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
+fn cornell_smoke() -> (Camera, SceneColliders, Geometry, Rgb, f32, u32, u32, usize, usize) {
     // Image
     let aspect_ratio = 1.0;
     let image_width = 600;
@@ -392,6 +393,7 @@ fn cornell_smoke() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize)
 
     // Scene
     let mut scene = SceneColliders::new();
+    let mut lights = Vec::new();
 
     let red = Material::lambertian(Texture::solid_color(Rgb::new(0.65, 0.05, 0.05)));
     let white = Material::lambertian(Texture::solid_color(Rgb::new(0.73, 0.73, 0.73)));
@@ -400,7 +402,7 @@ fn cornell_smoke() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize)
 
     scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 555.0, green));
     scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 0.0, red));
-    scene.add(Geometry::xzrect(113.0, 443.0, 127.0, 432.0, 554.0, light));
+    lights.push(Geometry::xzrect(113.0, 443.0, 127.0, 432.0, 554.0, light));
     scene.add(Geometry::xzrect(0.0, 555.0, 0.0, 555.0, 0.0, white.clone()));
     scene.add(Geometry::xzrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
     scene.add(Geometry::xyrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
@@ -408,10 +410,10 @@ fn cornell_smoke() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize)
     scene.add(Geometry::constant_medium(Geometry::instance_translation(Geometry::instance_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 330.0, 165.0), white.clone()), Axis::Y, 15.0), Vec3::new(265.0, 0.0, 295.0)), 0.01, Rgb::new(0.0, 0.0, 0.0)));
     scene.add(Geometry::constant_medium(Geometry::instance_translation(Geometry::instance_rotation(Geometry::cuboid(Point3::new(0.0, 0.0, 0.0), Point3::new(165.0, 165.0, 165.0), white.clone()), Axis::Y, -18.0), Vec3::new(130.0, 0.0, 65.0)), 0.01, Rgb::new(1.0, 1.0, 1.0)));
 
-    return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
+    return (cam, scene, Geometry::collider_list(lights), background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
 
-fn cornell_pedestal() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
+fn cornell_pedestal() -> (Camera, SceneColliders, Geometry, Rgb, f32, u32, u32, usize, usize) {
     // Image
     let aspect_ratio = 1.0;
     let image_width = 600;
@@ -437,6 +439,7 @@ fn cornell_pedestal() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usi
 
     // Scene
     let mut scene = SceneColliders::new();
+    let mut lights = Vec::new();
 
     let red = Material::lambertian(Texture::solid_color(Rgb::new(0.65, 0.05, 0.05)));
     let white = Material::lambertian(Texture::solid_color(Rgb::new(0.73, 0.73, 0.73)));
@@ -445,7 +448,7 @@ fn cornell_pedestal() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usi
 
     scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 555.0, green));
     scene.add(Geometry::yzrect(0.0, 555.0, 0.0, 555.0, 0.0, red));
-    scene.add(Geometry::xzrect(113.0, 443.0, 127.0, 432.0, 554.0, light.clone()));
+    lights.push(Geometry::xzrect(113.0, 443.0, 127.0, 432.0, 554.0, light.clone()));
     scene.add(Geometry::xzrect(0.0, 555.0, 0.0, 555.0, 0.0, white.clone()));
     scene.add(Geometry::xzrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
     scene.add(Geometry::xyrect(0.0, 555.0, 0.0, 555.0, 555.0, white.clone()));
@@ -457,10 +460,10 @@ fn cornell_pedestal() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usi
     // scene.add(Geometry::triangle(Point3::new(200., 100., 400.), Point3::new(100., 100., 200.), Point3::new(100., 200., 400.), white.clone()));
     scene.add(Geometry::instance_translation(Geometry::instance_rotation(Geometry::instance_rotation(Geometry::load_obj("assets/objs/suzanne.obj", 80.0, white.clone()), Axis::Y, 145.), Axis::Z, -30.), Vec3::new(270., 200., 178.)));
 
-    return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
+    return (cam, scene, Geometry::collider_list(lights), background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
 
-fn final_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
+fn final_scene() -> (Camera, SceneColliders, Geometry, Rgb, f32, u32, u32, usize, usize) {
     // Image
     let aspect_ratio = 1.0;
     let image_width = 800;
@@ -486,6 +489,7 @@ fn final_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
 
     // Scene
     let mut scene = SceneColliders::new();
+    let mut lights = Vec::new();
 
     let ground = Material::lambertian(Texture::solid_color(Rgb::new(0.48, 0.83, 0.53)));
     let boxes_per_side = 20;
@@ -507,7 +511,7 @@ fn final_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     scene.add(Geometry::bvh_node(&boxes, 0.0, 1.0, 0, boxes.len()));
     
     let light = Material::emissive(Rgb::new(7.0, 7.0, 7.0));
-    scene.add(Geometry::xzrect(123.0, 423.0, 147.0, 412.0, 554.0, light.clone()));
+    lights.push(Geometry::xzrect(123.0, 423.0, 147.0, 412.0, 554.0, light.clone()));
 
     scene.add(Geometry::sphere(Point3::new(260.0, 150.0, 45.0), 50.0, Material::dielectric(1.5)));
     scene.add(Geometry::sphere(Point3::new(0.0, 150.0, 145.0), 50.0, Material::glossy(Rgb::new(0.8, 0.8, 0.9), 1.0)));
@@ -533,16 +537,17 @@ fn final_scene() -> (Camera, SceneColliders, Rgb, f32, u32, u32, usize, usize) {
     }
     scene.add(Geometry::instance_translation(Geometry::instance_rotation(Geometry::bvh_node(&spheres, 0.0, 1.0, 0, spheres.len()), Axis::Y, 15.0), Vec3::new(-100.0, 270.0, 395.0)));
 
-    return (cam, scene, background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
+    return (cam, scene, Geometry::collider_list(lights), background, aspect_ratio, image_width, image_height, samples_per_pixel, max_depth);
 }
 
 
 
 
 fn main() {
-    let (cam, scene, background, _aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = cornell_box();
+    let (cam, scene, lights, background, _aspect_ratio, img_width, img_height, samples_per_pixel, max_depth) = cornell_box();
     let imgbuf = render_multi(
         scene,
+        lights,
         cam,
         background,
         max_depth,

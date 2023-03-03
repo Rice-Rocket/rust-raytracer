@@ -1,5 +1,5 @@
-#[path = "pdf.rs"] mod pdf;
-pub use pdf::*;
+#[path = "ray.rs"] mod ray;
+pub use ray::*;
 
 #[derive(Clone)]
 pub struct Perlin {

@@ -12,7 +12,7 @@ use rayon::prelude::*;
 
 
 
-pub fn ray_color(r: Ray, background: Rgb, scene: &SceneColliders, depth: usize) -> Rgb {
+pub fn ray_color(r: Ray, background: Rgb, scene: &SceneColliders, lights: &Geometry, depth: usize) -> Rgb {
     if depth <= 0 {
         return Rgb::origin();
     }
@@ -26,10 +26,12 @@ pub fn ray_color(r: Ray, background: Rgb, scene: &SceneColliders, depth: usize) 
             let mut pdf: f32 = 0.0;
             match rec.material.scatter(r, &mut attenuation, rec.clone(), &mut scattered, &mut pdf, &scene.atlas) {
                 true => {
-                    let p = PDF::cosine_pdf(rec.normal);
-                    scattered.reset(rec.point, p.generate(), r.time);
-                    let pdf_val = p.value(scattered.direction);
-                    return emitted + attenuation * rec.material.scattering_pdf(r, rec.clone(), &mut scattered) * ray_color(scattered, background, scene, depth - 1) / pdf_val
+                    let p0 = PDF::collidable_pdf(lights.clone(), rec.point);
+                    let p1 = PDF::cosine_pdf(rec.normal);
+                    let mixture = PDF::mixture_pdf(p0, p1);
+                    scattered.reset(rec.point, mixture.generate(), r.time);
+                    let pdf_val = mixture.value(scattered.direction);
+                    return emitted + attenuation * rec.material.scattering_pdf(r, rec.clone(), &mut scattered) * ray_color(scattered, background, scene, lights, depth - 1) / pdf_val
                 },
                 false => return emitted
             }
@@ -55,7 +57,7 @@ pub fn write_color(imbuf: &mut ImageBuffer<image::Rgb<u8>, Vec<u8>>, x: u32, y: 
     imbuf.put_pixel(x, y, image::Rgb([ir, ig, ib]));
 }
 
-pub fn render(mut imgbuf: &mut ImageBuffer<image::Rgb<u8>, Vec<u8>>, scene: &SceneColliders, cam: &Camera, background: Rgb, max_depth: usize, samples_per_pixel: usize) {
+pub fn render(mut imgbuf: &mut ImageBuffer<image::Rgb<u8>, Vec<u8>>, scene: &SceneColliders, lights: Geometry, cam: &Camera, background: Rgb, max_depth: usize, samples_per_pixel: usize) {
     let img_width = imgbuf.width();
     let img_height = imgbuf.height();
     let bar = ProgressBar::new(img_width as u64 * img_height as u64);
@@ -71,7 +73,7 @@ pub fn render(mut imgbuf: &mut ImageBuffer<image::Rgb<u8>, Vec<u8>>, scene: &Sce
                 let u = (i as f32 + random()) / (img_width as f32 - 1.0);
                 let v = (j as f32 + random()) / (img_height as f32 - 1.0);
                 let r = cam.get_ray(u, v);
-                pixel_color = pixel_color + ray_color(r, background, &scene, max_depth);
+                pixel_color = pixel_color + ray_color(r, background, &scene, &lights, max_depth);
             }
 
             write_color(&mut imgbuf, i, img_height - j - 1, pixel_color, samples_per_pixel);
@@ -84,7 +86,7 @@ pub fn render(mut imgbuf: &mut ImageBuffer<image::Rgb<u8>, Vec<u8>>, scene: &Sce
 
 
 
-pub fn render_worker(background: Rgb, img_width: u32, img_height: u32, samples_per_thread: usize, thread_cam: &Camera, thread_scene: &SceneColliders, max_depth: usize, n_threads: usize, bar: &Bar, progress: &Mutex<Progress>) -> ImageBuffer<image::Rgb<f32>, Vec<f32>> {
+pub fn render_worker(background: Rgb, img_width: u32, img_height: u32, samples_per_thread: usize, thread_cam: &Camera, thread_scene: &SceneColliders, lights: &Geometry, max_depth: usize, n_threads: usize, bar: &Bar, progress: &Mutex<Progress>) -> ImageBuffer<image::Rgb<f32>, Vec<f32>> {
     let mut subimage = ImageBuffer::new(img_width, img_height);
     for j in (0..img_height).rev() {
         for i in 0..img_width {
@@ -94,12 +96,16 @@ pub fn render_worker(background: Rgb, img_width: u32, img_height: u32, samples_p
                 let u = (i as f32 + random()) / (img_width as f32 - 1.0);
                 let v = (j as f32 + random()) / (img_height as f32 - 1.0);
                 let r = thread_cam.get_ray(u, v);
-                pixel_color = pixel_color + ray_color(r, background, &thread_scene, max_depth);
+                pixel_color = pixel_color + ray_color(r, background, &thread_scene, lights, max_depth);
             }
 
             let mut r = pixel_color.x;
             let mut g = pixel_color.y;
             let mut b  = pixel_color.z;
+
+            if r != r { r = 0.0 };
+            if g != g { g = 0.0 };
+            if b != b { b = 0.0 };
             
             let scale = 1.0 / samples_per_thread as f32;
             r = (scale * r).sqrt();
@@ -119,7 +125,7 @@ pub fn render_worker(background: Rgb, img_width: u32, img_height: u32, samples_p
 
 
 
-pub fn render_multi(scene: SceneColliders, cam: Camera, background: Rgb, max_depth: usize, samples_per_pixel: usize, img_width: u32, img_height: u32) -> ImageBuffer<image::Rgb<u8>, Vec<u8>> {
+pub fn render_multi(scene: SceneColliders, lights: Geometry, cam: Camera, background: Rgb, max_depth: usize, samples_per_pixel: usize, img_width: u32, img_height: u32) -> ImageBuffer<image::Rgb<u8>, Vec<u8>> {
     let n_threads = num_cpus::get();
     let samples_per_thread = samples_per_pixel / n_threads;
     let global_buf: Mutex<ImageBuffer<image::Rgb<f32>, Vec<f32>>> = Mutex::new(ImageBuffer::new(img_width, img_height));
@@ -130,7 +136,7 @@ pub fn render_multi(scene: SceneColliders, cam: Camera, background: Rgb, max_dep
         let bar = progress.lock().unwrap().bar(img_height as usize, format!("Rendering [Thread {}]", i + 1));
         let subimage = render_worker(
             background, img_width, img_height, samples_per_thread, &cam, 
-            &scene, max_depth, n_threads, &bar, &progress
+            &scene, &lights, max_depth, n_threads, &bar, &progress
         );
         let mut imgdata = global_buf.lock().unwrap();
         for j in 0..img_width {
